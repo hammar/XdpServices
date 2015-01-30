@@ -1,0 +1,11 @@
+
+apply plugin: 'java'
+apply plugin: 'eclipse'
+
+version = '0.0.1'
+jar {
+    manifest {
+        attributes 'Implementation-Title': 'XD for WebProtégé',
+                   'Implementation-Version': version
+    }
+}
