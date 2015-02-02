@@ -1,11 +1,47 @@
+buildscript {
+    repositories {
+        maven { url "https://repo.spring.io/libs-release" }
+        mavenLocal()
+        mavenCentral()
+    }
+    dependencies {
+        classpath("org.springframework.boot:spring-boot-gradle-plugin:1.1.10.RELEASE")
+    }
+}
 
 apply plugin: 'java'
 apply plugin: 'eclipse'
+apply plugin: 'spring-boot'
 
-version = '0.0.1'
+version = '0.1'
 jar {
-    manifest {
-        attributes 'Implementation-Title': 'XD for WebProtégé',
-                   'Implementation-Version': version
+	manifest {
+		attributes	'Implementation-Title': 'XdpServices',
+				'Implementation-Version': version
     }
+}
+
+repositories {
+	mavenLocal()
+	mavenCentral()
+	maven { url "https://repo.spring.io/libs-release" }
+}
+
+dependencies {
+	compile("com.karlhammar:webprotege:2.5.0:classes") {
+    	transitive = false // To avoid bloating the generated JAR w/ all kinds of stuff.
+	}
+	compile("org.springframework.boot:spring-boot-starter-web")
+	compile("pitt.search:semanticvectors:5.4")
+	compile("net.sourceforge.owlapi:owlapi-distribution:3.5.1")
+	compile("com.google.guava:guava:18.0")
+	compile("edu.mit:jwi:2.2.3")
+	compile("org.apache.commons:commons-lang3:3.3.2")
+	compile("org.apache.lucene:lucene-core:4.10.3")
+	compile("org.apache.lucene:lucene-queryparser:4.10.3")
+	compile("org.apache.lucene:lucene-analyzers-common:4.10.3")
+}
+
+springBoot {
+  mainClass = "com.karlhammar.xdpservices.XdpServices"
 }
