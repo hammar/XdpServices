@@ -20,6 +20,7 @@ jar {
 				'Implementation-Version': version
     }
 }
+sourceCompatibility = 1.8
 
 repositories {
 	mavenLocal()
