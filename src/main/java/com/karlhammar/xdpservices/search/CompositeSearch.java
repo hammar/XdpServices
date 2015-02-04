@@ -14,6 +14,7 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Properties;
 import java.util.Set;
 
 import org.apache.commons.lang3.ArrayUtils;
@@ -51,21 +52,31 @@ public class CompositeSearch {
 	private static Boolean useWordNet; 
 	private static IndexReader luceneReader;
 	private static Boolean useLucene;
+	private static Properties searchProperties;
 	
 	// Private constructor to defeat external instantiation (access via INSTANCE singleton)
 	private CompositeSearch() {
 		log = LogFactory.getLog(CompositeSearch.class);
+		loadSearchProperties();
 		stopwords = loadStopWords();
 		loadWordNetDictionary();
 		loadLuceneReader();
 	}
 	
+	private static void loadSearchProperties() {
+		try {
+			searchProperties = new Properties();
+			searchProperties.load(CompositeSearch.class.getResourceAsStream("search.properties"));
+		} 
+		catch (IOException e) {
+			log.fatal(String.format("Unable to load search properties. Error message: %s", e.getMessage()));
+		}
+	}
+	
 	private static void loadLuceneReader() {
 		try {
-			// TODO: Use properties to define path to Lucene indices in a reasonable place
-			// instead of using this hard-coded path.
-			//luceneReader = DirectoryReader.open(FSDirectory.open(new File("index")));
-			luceneReader = DirectoryReader.open(FSDirectory.open(new File("/Users/karl/Dropbox/Forskning/PhD/Code/AMILucene/index")));
+			String luceneIndexPath = searchProperties.getProperty("luceneIndexPath");
+			luceneReader = DirectoryReader.open(FSDirectory.open(new File(luceneIndexPath)));
 			useLucene = true;
 		} 
 		catch (IOException e) {
@@ -76,9 +87,7 @@ public class CompositeSearch {
 	
 	private static void loadWordNetDictionary() {
 		try {
-			// TODO: Use properties to define path to WordNet install in a reasonable place
-			// instead of using this hard-coded path.
-			String WnDictPath = "/Users/karl/Dropbox/Forskning/PhD/Code/AMILucene/wordnet/dict";
+			String WnDictPath = searchProperties.getProperty("wordNetPath");
 			URL url = new URL("file", null, WnDictPath);
 			wordnetDictionary = new Dictionary(url);
 			wordnetDictionary.open();
@@ -145,13 +154,13 @@ public class CompositeSearch {
 	 * @return List of ODP search results with confidences.
 	 */
 	private static List<OdpSearchResult> SemanticVectorSearch(Set<String> queryTerms) {
-		// TODO: Use properties to define path to Semantic Vectors indices in a reasonable place
-		// instead of using this hard-coded path. 
-		String[] configurationArray = {"-queryvectorfile","/Users/karl/Dropbox/Forskning/PhD/Code/AMILucene/termvectors2.bin","-searchvectorfile", "/Users/karl/Dropbox/Forskning/PhD/Code/AMILucene/docvectors2.bin","-searchtype","SUM","-numsearchresults", "25"};
+		String vectorBasePath = searchProperties.getProperty("semanticVectorsPath");
+		String queryVectorPath = String.format("%s/termvectors2.bin", vectorBasePath);
+		String searchVectorPath = String.format("%s/docvectors2.bin", vectorBasePath);
+		String[] configurationArray = {"-queryvectorfile",queryVectorPath,"-searchvectorfile", searchVectorPath,"-searchtype","SUM","-numsearchresults", "25"};
 		String[] queryTermsArray = queryTerms.toArray(new String[queryTerms.size()]);
 		String[] queryArray = ArrayUtils.addAll(configurationArray, queryTermsArray);
 		
-		// TODO: make Semantic Vectors run quietly (presently lots of things are sent to standard out)
 		FlagConfig config = FlagConfig.getFlagConfig(queryArray);
 		List<SearchResult> results = pitt.search.semanticvectors.Search.runSearch(config);
 		List<OdpSearchResult> resultsList = new ArrayList<OdpSearchResult>();
@@ -162,7 +171,7 @@ public class CompositeSearch {
 		    	  // TODO: Then fix the below to return the indexed URIs instead of this file system path.
 		    	  String suggestedOdpPath = result.getObjectVector().getObject().toString();
 		    	  Double suggestedOdpScore = result.getScore();
-		    	  OdpSearchResult entry = new OdpSearchResult(new OdpDetails(suggestedOdpPath,null,null,null,null,null),suggestedOdpScore);
+		    	  OdpSearchResult entry = new OdpSearchResult(new OdpDetails(suggestedOdpPath),suggestedOdpScore);
 		    	  resultsList.add(entry);
 		      }
 		}
@@ -351,8 +360,7 @@ public class CompositeSearch {
 						
 						// Create score entry and add to results list
 						// TODO: index URIs, not file names. And use URIs not filenames below.
-						// TODO: single argument constructor to OdpDetails (though what are consequences of equality comparison?)
-						OdpSearchResult entry = new OdpSearchResult(new OdpDetails(suggestedOdpFilename,null,null,null,null,null),invertedDistance);
+						OdpSearchResult entry = new OdpSearchResult(new OdpDetails(suggestedOdpFilename),invertedDistance);
 						resultsList.add(entry);
 					}
 					catch (IOException ex) {
@@ -395,8 +403,7 @@ public class CompositeSearch {
 							}
 						}
 					}
-					// TODO: new constructor for OdpDetails?
-					OdpSearchResult entry = new OdpSearchResult(new OdpDetails(suggestedOdpFilename,null,null,null,null,null),matchScore);
+					OdpSearchResult entry = new OdpSearchResult(new OdpDetails(suggestedOdpFilename),matchScore);
 					resultsList.add(entry);
 				}
 				catch (IOException ex) {
@@ -501,14 +508,11 @@ public class CompositeSearch {
 		}
 		
 		// Execute searches across all search engine methods
-		// TODO: add more search engine methods
-		// TODO: consider whether to use enriched input terms or not for vector search
 		//List<OdpSearchResult> SemanticVectorResults = SemanticVectorSearch(queryTerms);
 		List<OdpSearchResult> SemanticVectorResults = SemanticVectorSearch(inputTermsEnriched);
 		List<OdpSearchResult> SynonymOverlapResults = SynonymOverlapSearch(inputTermsEnriched);
 		List<OdpSearchResult> CQEditDistanceResults = CQEditDistanceSearch(queryString);
 		
-		// TODO: add new results to merger step below
 		List<OdpSearchResult> mergedResults = mergeAndSortResults(SemanticVectorResults,SynonymOverlapResults,CQEditDistanceResults);
 		List<OdpSearchResult> enrichedResults = enrichResults(mergedResults);
 		List<OdpSearchResult> filteredResults = filterResults(enrichedResults, filterConfiguration);

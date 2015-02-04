@@ -403,10 +403,10 @@ public class RunAmi {
 		return returnArray;*/
 	}
 	
-	public static void OldMain(String[] args) throws IOException {
+	public static void main(String[] args) throws IOException {
 		
 		// prepare stop words  
-		FileInputStream fis = new FileInputStream("datasets/stopwords.txt");
+		FileInputStream fis = new FileInputStream("/Users/karl/Dropbox/Forskning/PhD/Code/AMILucene/datasets/stopwords.txt");
 		BufferedReader stopbr = new BufferedReader(new InputStreamReader(fis));
 		stopwords = new HashSet<String>();
 		String stopLine = null;
@@ -416,20 +416,22 @@ public class RunAmi {
 		stopbr.close();
 		
 		// Open dataset and set up counters initially at zero
-		BufferedReader br = new BufferedReader(new FileReader(new File("datasets/ami.csv")));  
+		BufferedReader br = new BufferedReader(new FileReader(new File("/Users/karl/Dropbox/Forskning/PhD/Code/AMILucene/datasets/ami.csv")));  
 		String line = null;
 		float totalImports = 0;
 		float correctImports = 0;
 		float numberOfQuestions = 0;
 		
 		// Prepare WordNet
-		String WnDictPath = System.getProperty("user.dir") + File.separator + "wordnet" + File.separator + "dict";
+		//String WnDictPath = System.getProperty("user.dir") + File.separator + "wordnet" + File.separator + "dict";
+		String WnDictPath = "/Users/karl/Dropbox/Forskning/PhD/Code/AMILucene/wordnet/dict";
 		URL url = new URL("file", null, WnDictPath);
 		wordnetDictionary = new Dictionary(url);
 		wordnetDictionary.open();
 		
 		// Prepare Lucene index
-		luceneIndexReader = DirectoryReader.open(FSDirectory.open(new File("index")));
+		luceneIndexReader = DirectoryReader.open(FSDirectory.open(new File("/Users/karl/Dropbox/Forskning/PhD/Code/AMILucene/index")));
+		//luceneIndexReader = DirectoryReader.open(FSDirectory.open(new File("index")));
 		
 		// Variables that define whether answer patterns are independent or not
 		// I.e. whether recall should be tabulated based on whether ALL patterns are matched
