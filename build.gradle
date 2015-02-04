@@ -38,9 +38,6 @@ dependencies {
 	compile("com.google.guava:guava:18.0")
 	compile("edu.mit:jwi:2.2.3")
 	compile("org.apache.commons:commons-lang3:3.3.2")
-	compile("org.apache.lucene:lucene-core:4.10.3")
-	compile("org.apache.lucene:lucene-queryparser:4.10.3")
-	compile("org.apache.lucene:lucene-analyzers-common:4.10.3")
 }
 
 springBoot {
