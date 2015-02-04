@@ -225,6 +225,14 @@ public class IndexFiles {
 		  // TODO: Remove this variable once SID matching is done via own field
 		  //String synonyms = "";
           
+          // Index URI of ODP
+          IRI odpIRI = odp.getOntologyID().getOntologyIRI();
+          if (odpIRI != null) {
+        	  String odpUri = odpIRI.toString().toLowerCase();
+          	Field uriField = new StringField("uri", odpUri, Field.Store.YES);
+          	doc.add(uriField);
+          }
+          
           // Process entities in the ODP to generate the relevant indexes.
           Set<OWLEntity> entities = odp.getSignature();
           for (OWLEntity e: entities) {
