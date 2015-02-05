@@ -247,35 +247,6 @@ public class CompositeSearch {
 	}
 	
 	
-	
-	/**
-	 * Get all possible synonyms of some input string from WordNet.
-	 * @param inputTerm
-	 * @return
-	 */
-	private static Set<String> getSynonyms(String inputTerm) {
-		Set<String> synonyms = new HashSet<String>();
-		
-		if (!useWordNet) {
-			return synonyms;
-		}
-		else {
-			IIndexWord idxWord = wordnetDictionary.getIndexWord(inputTerm, POS.NOUN);
-			if (idxWord != null) {
-				List<IWordID> wordIDs = idxWord.getWordIDs();
-				for (IWordID wordID: wordIDs) {
-		        	IWord word = wordnetDictionary.getWord(wordID);
-		        	ISynset synset = word.getSynset();
-		        	for (IWord w: synset.getWords()) {
-		        		synonyms.add(w.getLemma());
-		        	}
-				}
-			}
-			return synonyms;
-		}
-	}
-	
-	
 	/**
 	 * Get all possible synonyms and hypernyms of some input term string from WordNet.
 	 * No semantic or other matching done, this is a widely thrown net..
