@@ -22,6 +22,6 @@ public class SearchController {
     @RequestMapping("/rebuildIndex")
     public String rebuildIndex() {
     	// TODO: Implement index rebuild logic here.
-    	return "ODP index rebuilding is not yet implemented.";
+    	return Indexer.INSTANCE.buildIndex();
     }
 }
