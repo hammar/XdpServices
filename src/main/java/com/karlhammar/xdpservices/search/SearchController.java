@@ -13,7 +13,7 @@ import edu.stanford.bmir.protege.web.shared.xd.OdpSearchResult;
 public class SearchController {
 
     @RequestMapping("/odpSearch")
-    public List<OdpSearchResult> odpSearch(@RequestParam(value="queryString", required=true) String queryString, 
+    public OdpSearchResult[] odpSearch(@RequestParam(value="queryString", required=true) String queryString, 
     		@RequestParam(value="filterConfiguration", required=false) OdpSearchFilterConfiguration filterConfiguration) {
     	// Simply defer execution to CompositeSearch
     	return CompositeSearch.INSTANCE.runSearch(queryString,filterConfiguration);

@@ -465,7 +465,7 @@ public class CompositeSearch {
 	 * @param filterConfiguration Configuration of which results to exclude.
 	 * @return List of ODP search results.
 	 */
-	public List<OdpSearchResult> runSearch(String queryString, OdpSearchFilterConfiguration filterConfiguration) {
+	public OdpSearchResult[] runSearch(String queryString, OdpSearchFilterConfiguration filterConfiguration) {
 		
 		// Normalise query into a term array
 		String[] queryTerms = prepareQueryString(queryString);
@@ -485,6 +485,8 @@ public class CompositeSearch {
 		List<OdpSearchResult> mergedResults = mergeAndSortResults(SemanticVectorResults,SynonymOverlapResults,CQEditDistanceResults);
 		List<OdpSearchResult> enrichedResults = enrichResults(mergedResults);
 		List<OdpSearchResult> filteredResults = filterResults(enrichedResults, filterConfiguration);
-		return filteredResults;
+		
+		OdpSearchResult[] resultsArray = filteredResults.toArray(new OdpSearchResult[filteredResults.size()]);
+		return resultsArray;
 	}
 }
