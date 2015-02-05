@@ -157,7 +157,7 @@ public class CompositeSearch {
 		String vectorBasePath = searchProperties.getProperty("semanticVectorsPath");
 		String queryVectorPath = String.format("%s/termvectors2.bin", vectorBasePath);
 		String searchVectorPath = String.format("%s/docvectors2.bin", vectorBasePath);
-		String[] configurationArray = {"-queryvectorfile",queryVectorPath,"-searchvectorfile", searchVectorPath,"-searchtype","SUM","-numsearchresults", "25"};
+		String[] configurationArray = {"-queryvectorfile",queryVectorPath,"-searchvectorfile", searchVectorPath,"-docidfield", "uri", "-searchtype", "SUM", "-numsearchresults", "25"};
 		String[] queryTermsArray = queryTerms.toArray(new String[queryTerms.size()]);
 		String[] queryArray = ArrayUtils.addAll(configurationArray, queryTermsArray);
 		
@@ -166,9 +166,6 @@ public class CompositeSearch {
 		List<OdpSearchResult> resultsList = new ArrayList<OdpSearchResult>();
 		if (results.size() > 0) {
 		      for (SearchResult result: results) {
-		    	  //String suggestedOdpPath = result.getObjectVector().getObject().toString();
-		    	  // TODO: Update indexing to index URIs instead of file system paths.
-		    	  // TODO: Then fix the below to return the indexed URIs instead of this file system path.
 		    	  String suggestedOdpPath = result.getObjectVector().getObject().toString();
 		    	  Double suggestedOdpScore = result.getScore();
 		    	  OdpSearchResult entry = new OdpSearchResult(new OdpDetails(suggestedOdpPath),suggestedOdpScore);
@@ -301,9 +298,9 @@ public class CompositeSearch {
 					try {
 						Document doc = luceneReader.document(i);
 						Double shortestDistance = 1.0;
-						IndexableField pathField = doc.getField("path");
-						String suggestedOdpPath = pathField.stringValue();
-						String suggestedOdpFilename = suggestedOdpPath.substring(suggestedOdpPath.lastIndexOf("/") + 1);
+						IndexableField uriField = doc.getField("uri");
+						String suggestedOdpUri = uriField.stringValue();
+						
 						
 						// Iterate over all CQ fields (there may be more than one if more than one CQ existed
 						// for this document when indexing). We only keep the shortest edit distance.
@@ -330,8 +327,7 @@ public class CompositeSearch {
 						Double invertedDistance = 1.0 - shortestDistance;
 						
 						// Create score entry and add to results list
-						// TODO: index URIs, not file names. And use URIs not filenames below.
-						OdpSearchResult entry = new OdpSearchResult(new OdpDetails(suggestedOdpFilename),invertedDistance);
+						OdpSearchResult entry = new OdpSearchResult(new OdpDetails(suggestedOdpUri),invertedDistance);
 						resultsList.add(entry);
 					}
 					catch (IOException ex) {
@@ -360,9 +356,9 @@ public class CompositeSearch {
 			for (int i=0; i<luceneReader.maxDoc(); i++) {
 				try {
 					Document doc = luceneReader.document(i);
-					IndexableField pathField = doc.getField("path");
-					String suggestedOdpPath = pathField.stringValue();
-					String suggestedOdpFilename = suggestedOdpPath.substring(suggestedOdpPath.lastIndexOf("/") + 1);
+					IndexableField uriField = doc.getField("uri");
+					String suggestedOdpUri = uriField.stringValue();
+					
 					IndexableField field = doc.getField("synonyms");
 					Double matchScore = 0.0;
 					if (field != null) {
@@ -374,7 +370,7 @@ public class CompositeSearch {
 							}
 						}
 					}
-					OdpSearchResult entry = new OdpSearchResult(new OdpDetails(suggestedOdpFilename),matchScore);
+					OdpSearchResult entry = new OdpSearchResult(new OdpDetails(suggestedOdpUri),matchScore);
 					resultsList.add(entry);
 				}
 				catch (IOException ex) {
@@ -479,7 +475,6 @@ public class CompositeSearch {
 		}
 		
 		// Execute searches across all search engine methods
-		//List<OdpSearchResult> SemanticVectorResults = SemanticVectorSearch(queryTerms);
 		List<OdpSearchResult> SemanticVectorResults = SemanticVectorSearch(inputTermsEnriched);
 		List<OdpSearchResult> SynonymOverlapResults = SynonymOverlapSearch(inputTermsEnriched);
 		List<OdpSearchResult> CQEditDistanceResults = CQEditDistanceSearch(queryString);
