@@ -227,8 +227,15 @@ public class IndexFiles {
           
           // Index URI of ODP
           IRI odpIRI = odp.getOntologyID().getOntologyIRI();
-          if (odpIRI != null) {
-        	  String odpUri = odpIRI.toString().toLowerCase();
+    	  // We only index ODPs that have HTTP URI:s, damn it!
+          if (odpIRI == null) {
+        	  return;
+          } 
+          else if (!odpIRI.toString().startsWith("http://")) {
+        	  return;
+          }
+          else {
+        	String odpUri = odpIRI.toString().toLowerCase();
           	Field uriField = new StringField("uri", odpUri, Field.Store.YES);
           	doc.add(uriField);
           }
