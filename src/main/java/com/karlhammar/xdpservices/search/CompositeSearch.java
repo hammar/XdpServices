@@ -191,21 +191,24 @@ public class CompositeSearch {
 		}
 		
 		// Merge scores using Map
-		Map<OdpDetails,Double> mergedResultsMap = new HashMap<OdpDetails,Double>();
+		// Note that the map is string,double - since equality comparison of OdpDetails would be a nuisance, given
+		// the many fields that this data type has.
+		Map<String,Double> mergedResultsMap = new HashMap<String,Double>();
 		for (OdpSearchResult entry: concatenatedResultsList) {
-			if (!mergedResultsMap.containsKey(entry.getOdp())) {
-				mergedResultsMap.put(entry.getOdp(), entry.getConfidence());
+			if (!mergedResultsMap.containsKey(entry.getOdp().getUri())) {
+				mergedResultsMap.put(entry.getOdp().getUri(), entry.getConfidence());
 			}
 			else {
-				Double updatedScore = mergedResultsMap.get(entry.getOdp()) + entry.getConfidence();
-				mergedResultsMap.put(entry.getOdp(), updatedScore);
+				Double updatedScore = mergedResultsMap.get(entry.getOdp().getUri()) + entry.getConfidence();
+				mergedResultsMap.put(entry.getOdp().getUri(), updatedScore);
 			}
 		}
 		
-		// Turn said Map back into a list of OdpSearchResult
+		// Turn said Map back into a list of OdpSearchResult, creating new OdpDetails object with only
+		// URI field set in the process.
 		List<OdpSearchResult> mergedResultsList = new ArrayList<OdpSearchResult>();
-		for (Map.Entry<OdpDetails, Double> entry : mergedResultsMap.entrySet()) {
-			OdpDetails odp = entry.getKey();
+		for (Map.Entry<String, Double> entry : mergedResultsMap.entrySet()) {
+			OdpDetails odp = new OdpDetails(entry.getKey());
 		    Double confidence = entry.getValue();
 		    OdpSearchResult newEntry = new OdpSearchResult(odp,confidence);
 		    mergedResultsList.add(newEntry);
