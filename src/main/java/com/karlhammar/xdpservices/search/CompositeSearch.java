@@ -307,7 +307,7 @@ public class CompositeSearch {
 						
 						// Iterate over all CQ fields (there may be more than one if more than one CQ existed
 						// for this document when indexing). We only keep the shortest edit distance.
-						IndexableField[] fields = doc.getFields("CQ");
+						IndexableField[] fields = doc.getFields("cqs");
 						for (IndexableField field: fields) {
 							String indexedCQ = field.stringValue();
 							// Get maximum possible Levenshtein distance, used to calculate relative distance
@@ -466,6 +466,9 @@ public class CompositeSearch {
 	 * @return List of ODP search results.
 	 */
 	public OdpSearchResult[] runSearch(String queryString, OdpSearchFilterConfiguration filterConfiguration) {
+		
+		// TODO: Add search over the description field also.
+		// TODO: Add search over the classes/properties field also.
 		
 		// Normalise query into a term array
 		String[] queryTerms = prepareQueryString(queryString);

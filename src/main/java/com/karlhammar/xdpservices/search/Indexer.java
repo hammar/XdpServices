@@ -2,10 +2,43 @@ package com.karlhammar.xdpservices.search;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Properties;
+import java.util.Set;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.apache.lucene.analysis.Analyzer;
+import org.apache.lucene.analysis.standard.StandardAnalyzer;
+import org.apache.lucene.document.Document;
+import org.apache.lucene.document.Field;
+import org.apache.lucene.document.StringField;
+import org.apache.lucene.index.IndexWriter;
+import org.apache.lucene.index.IndexWriterConfig;
+import org.apache.lucene.index.Term;
+import org.apache.lucene.index.IndexWriterConfig.OpenMode;
+import org.apache.lucene.store.Directory;
+import org.apache.lucene.store.FSDirectory;
+import org.apache.lucene.util.Version;
+import org.semanticweb.owlapi.apibinding.OWLManager;
+import org.semanticweb.owlapi.io.FileDocumentSource;
+import org.semanticweb.owlapi.model.IRI;
+import org.semanticweb.owlapi.model.MissingImportHandlingStrategy;
+import org.semanticweb.owlapi.model.OWLAnnotation;
+import org.semanticweb.owlapi.model.OWLClass;
+import org.semanticweb.owlapi.model.OWLDataFactory;
+import org.semanticweb.owlapi.model.OWLDataProperty;
+import org.semanticweb.owlapi.model.OWLEntity;
+import org.semanticweb.owlapi.model.OWLLiteral;
+import org.semanticweb.owlapi.model.OWLObjectProperty;
+import org.semanticweb.owlapi.model.OWLOntology;
+import org.semanticweb.owlapi.model.OWLOntologyCreationException;
+import org.semanticweb.owlapi.model.OWLOntologyLoaderConfiguration;
+import org.semanticweb.owlapi.model.OWLOntologyManager;
+import org.springframework.util.StringUtils;
+
+import com.google.common.base.CaseFormat;
 
 import edu.stanford.bmir.protege.web.shared.xd.OdpDetails;
 
@@ -17,7 +50,8 @@ public class Indexer {
 	// Singleton properties.
 	private static Log log;
 	private static Properties searchProperties;
-	
+	private static IndexWriter writer;
+
 	/**
 	 * Private singleton constructor setting up all the statics that are needed. 
 	 */
@@ -45,45 +79,275 @@ public class Indexer {
 
 	
 	/**
-	 * Builds Lucene index from the contents of the ODP repository. This wrapper method just 
-	 * finds the repository directory and iterates over the files therein; the real indexing work
-	 * is done in the indexODP() method. 
+	 * Builds Lucene index from the contents of the ODP repository. This wrapper
+	 * method just finds the repository directory and iterates over the files
+	 * therein; the real indexing work is done in the indexODP() method.
+	 * 
 	 * @return A user friendly indexing success/failure message string.
 	 */
 	public String buildIndex() {
 		String odpRepositoryPath = searchProperties.getProperty("odpRepositoryPath");
+		String luceneIndexPath = searchProperties.getProperty("luceneIndexPath");
 		File odpRepository = new File(odpRepositoryPath);
+		File luceneIndex = new File(luceneIndexPath);
 		if (!odpRepository.isDirectory()) {
-			log.fatal(String.format("Configured ODP repository path is not a directory: %s", odpRepositoryPath));
+			log.fatal(String.format(
+					"Configured ODP repository path is not a directory: %s",
+					odpRepositoryPath));
 			return "Index rebuild failed.";
-		}
-		else {
-			long startTime = System.nanoTime();
-			String[] files = odpRepository.list();
-			for (int i = 0; i < files.length; i++) {
-				OdpDetails odp = parseOdp(new File(odpRepository, files[i]));
-				indexOdp(odp);
+		} else {
+			try {
+				Directory dir = FSDirectory.open(luceneIndex);
+				Analyzer analyzer = new StandardAnalyzer(Version.LUCENE_46);
+				IndexWriterConfig iwc = new IndexWriterConfig(
+						Version.LUCENE_46, analyzer);
+				iwc.setOpenMode(OpenMode.CREATE);
+				writer = new IndexWriter(dir, iwc);
+				long startTime = System.nanoTime();
+				String[] files = odpRepository.list();
+				for (int i = 0; i < files.length; i++) {
+					// Ignore dotfiles
+					if (!files[i].startsWith(".")) {
+						OdpDetails odp = parseOdp(new File(odpRepository, files[i]));
+						if (odp != null) {
+							indexOdp(odp);
+						}
+					}
+				}
+				writer.close();
+				long endTime = System.nanoTime();
+				float duration = (endTime - startTime) / 1000000000;
+				return String.format("Index rebuilt in %s seconds.", duration);
+			} catch (IOException ex) {
+				log.fatal(String
+						.format("IO operations on index path %s failed. Error message: %s",
+								ex.getMessage()));
+				return "Index rebuild failed";
 			}
-			long endTime = System.nanoTime();
-			float duration = (endTime - startTime)/1000000000;
-			return String.format("Index rebuilt in %s seconds.", duration);
 		}
 	}
 
+	
 	/**
 	 * Performs Lucene indexing (using shared static index writer) of a given ODP.
 	 * @param odpFile File to add to index.
+	 * @throws IOException 
 	 */
-	private static void indexOdp(OdpDetails odp) {
-		// TODO: Implement this.
-		log.info(String.format("Indexing ODP: %s", odp.getUri().toString()));
+	private static void indexOdp(OdpDetails odp) throws IOException {
+		
+		// Make a new, empty Lucene document
+        Document doc = new Document();
+        
+        // Add URI 
+        Field uriField = new StringField("uri", odp.getUri(), Field.Store.YES);
+        doc.add(uriField);
+        
+        // Add CQ:s
+        for (String cq: odp.getCqs()) {
+        	Field cqField = new StringField("cqs", cq, Field.Store.YES);
+        	doc.add(cqField);
+        }
+        
+        // Add description
+        Field descriptionField = new StringField("description", odp.getDescription(), Field.Store.YES);
+        doc.add(descriptionField);
+
+        // Add classes
+        for (String aClass: odp.getClasses()) {
+        	Field classesField = new StringField("classes", aClass, Field.Store.YES);
+        	doc.add(classesField);
+        }
+        
+        // Add properties
+        for (String aProperty: odp.getProperties()) {
+        	Field propertiesField = new StringField("properties", aProperty, Field.Store.YES);
+        	doc.add(propertiesField);
+        }
+        
+		// TODO: Need "synonyms" field (check out how this is generated from WordNet in AMI1 codebase)
+        
+        // Write or update index
+        if (writer.getConfig().getOpenMode() == OpenMode.CREATE) {
+            // New index, so we just add the document (no old document can be there):
+            writer.addDocument(doc);
+        } 
+        else {
+            // Existing index (an old copy of this document may have been indexed) so 
+            // we use updateDocument instead to replace the old one matching the exact 
+            // uri, if present:
+            writer.updateDocument(new Term("uri", odp.getUri()), doc);
+        }
 	}
 	
 	
+	private static String getLabel(OWLEntity entity, OWLOntology ontology) {
+		Set<OWLAnnotation> annotations = entity.getAnnotations(ontology);
+		for (OWLAnnotation annotation: annotations) {
+			if (annotation.getProperty().isLabel() && annotation.getValue() instanceof OWLLiteral) {
+				OWLLiteral annotationAsLiteral = (OWLLiteral) annotation.getValue();
+      			String annotationLang = annotationAsLiteral.getLang();
+      			if (annotationLang == "en" || annotationLang == "EN" || annotationLang == "") { 
+      				return annotationAsLiteral.getLiteral();
+      			}
+  			}
+		}
+		return null;
+	}
+	
+	
+	/**
+	 * Parse an ODP file on disk into an OdpDetails object containing the metadata about
+	 * that ODP, by mapping the cpannotationschema and cpas-ext annotations on the OWL ontology 
+	 * of the file in question against OdpDetails class fields.
+	 * 
+	 * Note that this method can return null if parsing fails, so make sure to check for this if using
+	 * the method. Also note that individual OdpDetails member fields may be null if
+	 * no appropriate annotations exist on the parsed ontology.
+	 * @param odpFile File to parse
+	 * @return An OdpDetails object or null if parsing failed.
+	 */
 	private static OdpDetails parseOdp(File odpFile) {
-		// TODO: Implement this.
-		log.info(String.format("Parsing ODP: %s", odpFile.toString()));
-		return new OdpDetails("http://test.test/");
+		
+		// Fields to be filled by subsequent parsing.
+		String odpUri = null;
+		String odpName = null;
+		String odpDescription = null;
+		String[] odpDomains;
+		String[] odpCqs;
+		String odpImage = null;
+		String[] odpScenarios;
+		String[] odpClasses;
+		String[] odpProperties;
+		
+		// ODP ontology
+		OWLOntology odp;
+		OWLDataFactory df = OWLManager.getOWLDataFactory();
+		
+        try {
+            OWLOntologyLoaderConfiguration config = new OWLOntologyLoaderConfiguration();
+            FileDocumentSource fds = new FileDocumentSource(odpFile);
+            config = config.setFollowRedirects(false);
+            config = config.setMissingImportHandlingStrategy(MissingImportHandlingStrategy.SILENT);
+            OWLOntologyManager manager = OWLManager.createOWLOntologyManager();
+			odp = manager.loadOntologyFromOntologyDocument(fds, config);
+		} catch (OWLOntologyCreationException e) {
+			log.error(String.format("Unable to parse ODP file %s. Error message: %s", odpFile.getAbsolutePath(), e.getMessage()));
+			return null;
+		}
+        
+        // Get ODP Uri
+        try {
+        	odpUri =  odp.getOntologyID().getOntologyIRI().toString();
+        }
+        catch (NullPointerException npe) {
+        	log.error(String.format("ODP file %s has no IRI. Error message: %s", odpFile.getAbsolutePath(), npe.getMessage()));
+        	return null;
+        }
+
+        // Stuff needed for parsing and merging the ODP description field
+        List<String> odpIntents = new ArrayList<String>();
+        List<String> odpSolutions = new ArrayList<String>();
+        List<String> odpConsequences = new ArrayList<String>();
+        
+        // Other annotation stuff. Lists rather than arrays used here
+        // as the number of elements is initially unknown
+        List<String> odpDomainsList = new ArrayList<String>();
+        List<String> odpCqsList = new ArrayList<String>();
+        List<String> odpScenariosList = new ArrayList<String>();
+        
+        // Get all annotations on ODP ontology
+        for (OWLAnnotation annotation: odp.getAnnotations()) {
+        	if (annotation.getProperty() == df.getRDFSLabel() && annotation.getValue() instanceof OWLLiteral) {
+        		OWLLiteral val = (OWLLiteral) annotation.getValue();
+        		odpName = val.getLiteral();
+        	}
+        	if (annotation.getProperty().getIRI().equals(IRI.create("http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasIntent")) &&
+        			annotation.getValue() instanceof OWLLiteral) {
+        		OWLLiteral val = (OWLLiteral) annotation.getValue();
+        		odpIntents.add(val.getLiteral());
+        	}
+        	if (annotation.getProperty().getIRI().equals(IRI.create("http://xd-protege.com/schemas/cpas-ext.owl#solutionDescription")) &&
+        			annotation.getValue() instanceof OWLLiteral) {
+        		OWLLiteral val = (OWLLiteral) annotation.getValue();
+        		odpSolutions.add(val.getLiteral());
+        	}
+        	if (annotation.getProperty().getIRI().equals(IRI.create("http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasConsequences")) &&
+        			annotation.getValue() instanceof OWLLiteral) {
+        		OWLLiteral val = (OWLLiteral) annotation.getValue();
+        		odpConsequences.add(val.getLiteral());
+        	}
+        	if (annotation.getProperty().getIRI().equals(IRI.create("http://xd-protege.com/schemas/cpas-ext.owl#category")) &&
+        			annotation.getValue() instanceof OWLLiteral) {
+        		OWLLiteral val = (OWLLiteral) annotation.getValue();
+        		odpDomainsList.add(val.getLiteral());
+        	}
+        	if (annotation.getProperty().getIRI().equals(IRI.create("http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#coversRequirements")) &&
+        			annotation.getValue() instanceof OWLLiteral) {
+        		OWLLiteral val = (OWLLiteral) annotation.getValue();
+        		odpCqsList.add(val.getLiteral());
+        	}
+        	if (annotation.getProperty().getIRI().equals(IRI.create("http://xd-protege.com/schemas/cpas-ext.owl#hasImage")) &&
+        			annotation.getValue() instanceof OWLLiteral) {
+        		OWLLiteral val = (OWLLiteral) annotation.getValue();
+        		odpImage = val.getLiteral();
+        	}
+        	if (annotation.getProperty().getIRI().equals(IRI.create("http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#scenarios")) &&
+        			annotation.getValue() instanceof OWLLiteral) {
+        		OWLLiteral val = (OWLLiteral) annotation.getValue();
+        		odpScenariosList.add(val.getLiteral());
+        	}
+        }
+        
+        // Merge intents, solutions, and consequences into one field in structured manner.
+        String odpIntent = StringUtils.collectionToDelimitedString(odpIntents, "\n\n");
+        String odpSolution = StringUtils.collectionToDelimitedString(odpSolutions, "\n\n");
+        String odpConsequence = StringUtils.collectionToDelimitedString(odpConsequences, "\n\n");
+        odpDescription = StringUtils.arrayToDelimitedString(new String[]{odpIntent,odpSolution,odpConsequence}, "\n\n");
+        
+        // Transform lists of domains and cqs into arrays as required by target object
+        odpDomains = odpDomainsList.toArray(new String[odpDomainsList.size()]);
+        odpCqs = odpCqsList.toArray(new String[odpCqsList.size()]);
+        odpScenarios = odpScenariosList.toArray(new String[odpScenariosList.size()]);
+        
+        // Get classes and properties (using list as size is initially unknown)
+        List<String> odpClassesList = new ArrayList<String>();
+        List<String> odpPropertiesList = new ArrayList<String>();
+        
+        // Extract labels of classes and properties from ODP graph
+        Set<OWLEntity> allEntities = odp.getSignature(false);
+        for (OWLEntity anEntity: allEntities) {
+        	
+        	// By default use the local uri portion. 
+        	String globalURI =  anEntity.getIRI().toString();
+        	String localURI = globalURI.substring(globalURI.replace("#", "/").lastIndexOf("/") + 1);
+  		  	for (CaseFormat c : CaseFormat.values())
+  		  		localURI = c.to(CaseFormat.LOWER_UNDERSCORE, localURI);
+  		  	String processedLocalURI = localURI.replace("_", " ").replace("-", " ");
+  		  	
+  		  	// If an rdfs:label is found, use that instead.
+        	String entityLabel;
+        	if (getLabel(anEntity,odp) != null) {
+        		entityLabel = getLabel(anEntity,odp);
+        	}
+        	else {
+        		entityLabel = processedLocalURI;
+        	}
+        	
+        	// Sort classes and properties into their respective lists
+        	if (anEntity instanceof OWLClass) {
+        		odpClassesList.add(entityLabel);
+        	}
+        	
+        	if (anEntity instanceof OWLObjectProperty || anEntity instanceof OWLDataProperty) {
+        		odpPropertiesList.add(entityLabel);
+        	}
+        }
+        
+        // Transform lists of class and property names to arrays as required by target object
+        odpClasses = odpClassesList.toArray(new String[odpClassesList.size()]);
+        odpProperties = odpPropertiesList.toArray(new String[odpPropertiesList.size()]);
+        
+        return new OdpDetails(odpUri,odpName,odpDescription,odpDomains,odpCqs,odpImage,odpScenarios,odpClasses,odpProperties);
 	}
 	
 }
