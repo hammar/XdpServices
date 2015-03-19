@@ -1,8 +1,12 @@
 package com.karlhammar.xdpservices.search;
 
+import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Properties;
 import java.util.Set;
@@ -14,6 +18,7 @@ import org.apache.lucene.analysis.standard.StandardAnalyzer;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.StringField;
+import org.apache.lucene.document.TextField;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.Term;
@@ -49,6 +54,7 @@ public class Indexer {
 
 	// Singleton properties.
 	private static Log log;
+	private static Set<String> stopwords;
 	private static Properties searchProperties;
 	private static IndexWriter writer;
 
@@ -58,9 +64,28 @@ public class Indexer {
 	private Indexer() {
 		log = LogFactory.getLog(Indexer.class);
 		loadSearchProperties();
-		//stopwords = loadStopWords();
+		stopwords = loadStopWords();
 		//loadWordNetDictionary();
 		//loadLuceneReader();
+	}
+	
+	
+	private static Set<String> loadStopWords() {
+		try {
+			InputStream is = CompositeSearch.class.getResourceAsStream("stopwords.txt");
+			BufferedReader stopbr = new BufferedReader(new InputStreamReader(is, "UTF-8"));
+			stopwords = new HashSet<String>();
+			String stopLine = null;
+			while ((stopLine = stopbr.readLine()) != null) {
+				stopwords.add(stopLine);
+			}
+			stopbr.close();
+			return stopwords;
+		}
+		catch (IOException e) {
+			log.error("Unable to load stop word set; using empty stop word set.");
+			return new HashSet<String>();
+		}
 	}
 	
 	
@@ -109,9 +134,9 @@ public class Indexer {
 				writer = new IndexWriter(dir, iwc);
 				String[] files = odpRepository.list();
 				for (int i = 0; i < files.length; i++) {
-					// Ignore dotfiles
-					if (!files[i].startsWith(".")) {
-						OdpDetails odp = parseOdp(new File(odpRepository, files[i]));
+					File candidateOdpFile = new File(odpRepository, files[i]);
+					if (!candidateOdpFile.isHidden() && !candidateOdpFile.isDirectory()) {
+						OdpDetails odp = parseOdp(candidateOdpFile);
 						if (odp != null) {
 							indexOdp(odp);
 						}
@@ -141,7 +166,17 @@ public class Indexer {
 	
 	private static String buildVectorsIndex() {
 		long vectorsStartTime = System.nanoTime();
-		// TODO: here we actually rebuild semantic vectors index
+		String luceneIndexPath = searchProperties.getProperty("luceneIndexPath");
+		String vectorBasePath = searchProperties.getProperty("semanticVectorsPath");
+		String docVectorsPath = String.format("%s/termvectors", vectorBasePath);
+		String termVectorsPath = String.format("%s/docvectors", vectorBasePath);
+		String[] configurationArray = {"-contentsfields","allterms","-docindexing","inmemory","-docvectorsfile",docVectorsPath,"-termvectorsfile", termVectorsPath,"-luceneindexpath",luceneIndexPath,"-docidfield","uri","-trainingcycles","2"};
+		try {			
+			CustomSemanticVectorsBuildIndex.main(configurationArray);
+		} catch (Exception e) {
+			log.fatal(String.format("Semantic Vectors construction failed with error: %s", e.getMessage()));
+			return "Semantic Vectors index construction failed.";
+		}
 		long vectorsEndTime = System.nanoTime();
 		float vectorsDuration = (vectorsEndTime - vectorsStartTime) / 1000000000;
 		return String.format("Semantic Vectors index rebuilt in %.1f seconds.", vectorsDuration);
@@ -181,7 +216,7 @@ public class Indexer {
         
         // Add description
         if (odp.getDescription() != null) {
-        	Field descriptionField = new StringField("description", odp.getDescription(), Field.Store.YES);
+        	Field descriptionField = new TextField("description", odp.getDescription(), Field.Store.YES);
         	doc.add(descriptionField);
         }
         
@@ -194,7 +229,7 @@ public class Indexer {
         // Add classes
         if (odp.getClass() != null) {
 	        for (String aClass: odp.getClasses()) {
-	        	Field classesField = new StringField("classes", aClass, Field.Store.YES);
+	        	Field classesField = new TextField("classes", aClass, Field.Store.YES);
 	        	doc.add(classesField);
 	        }
         }
@@ -206,6 +241,34 @@ public class Indexer {
 	        	doc.add(propertiesField);
 	        }
         }
+        
+        // Add "all terms" catch-all field
+        // Merge all terms
+        String allTermsMerged = "";
+        if (odp.getDescription() != null) {
+        	allTermsMerged += odp.getDescription() + " ";
+        }
+        if (odp.getCqs() != null) {
+        	for (String cq: odp.getCqs()) {
+        		allTermsMerged += cq + " ";
+        	}
+        }
+        if (odp.getClasses() != null) {
+        	allTermsMerged += StringUtils.arrayToDelimitedString(odp.getClasses(), " ") + " ";
+        }
+        if (odp.getProperties() != null) {
+        	allTermsMerged += StringUtils.arrayToDelimitedString(odp.getProperties(), " ") + " ";
+        }
+        
+        // Stop-word removal
+        String allTerms = "";
+        for (String s: allTermsMerged.split(" ")) {
+        	if (!stopwords.contains(s)) {
+        		allTerms += (s + " ");
+        	}
+        }
+        Field allTermsField = new TextField("allterms", allTerms, Field.Store.YES);
+        doc.add(allTermsField);
         
 		// TODO: Need "synonyms" field (check out how this is generated from WordNet in AMI1 codebase)
         
@@ -342,13 +405,18 @@ public class Indexer {
         }
         
         // In the case that no rdfs:label exists, construct odp name from ODP uri
-        if (odpName == null) {
-        	odpName = odpUri;
-        	if (odpUri.endsWith("/")) {
-        		// Remove trailing slash
-        		odpName = odpUri.substring(0, odpUri.lastIndexOf("/")-1);
-        	}
-        	odpName = odpName.substring(odpUri.lastIndexOf("/")+1);
+        try {
+	        if (odpName == null) {
+	        	odpName = odpUri;
+	        	if (odpUri.endsWith("/")) {
+	        		// Remove trailing slash
+	        		odpName = odpUri.substring(0, odpUri.lastIndexOf("/")-1);
+	        	}
+	        	odpName = odpName.substring(odpUri.lastIndexOf("/")+1);
+	        }
+        }
+        catch (Exception e) {
+        	odpName = "Unknown";
         }
         
         // Merge intents, solutions, and consequences into one field in structured manner.

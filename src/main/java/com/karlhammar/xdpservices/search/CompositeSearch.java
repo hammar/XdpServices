@@ -151,8 +151,6 @@ public class CompositeSearch {
 	}
 	
 	
-	
-	//
 	/**
 	 * Execute Semantic Vectors Search (https://code.google.com/p/semanticvectors/).
 	 * Requires the existence of term and document vectors named as per the (method-internal) 
@@ -527,13 +525,11 @@ public class CompositeSearch {
 		}
 		
 		// Execute searches across all search engine methods
-		// TODO: Enable semantic vectors search once semantic vectors index is rebuilt
-		//List<OdpSearchResult> SemanticVectorResults = SemanticVectorSearch(inputTermsEnriched);
+		List<OdpSearchResult> SemanticVectorResults = SemanticVectorSearch(inputTermsEnriched);
 		List<OdpSearchResult> SynonymOverlapResults = SynonymOverlapSearch(inputTermsEnriched);
 		List<OdpSearchResult> CQEditDistanceResults = CQEditDistanceSearch(queryString);
 		
-		List<OdpSearchResult> mergedResults = mergeAndSortResults(SynonymOverlapResults,CQEditDistanceResults);
-		//List<OdpSearchResult> mergedResults = mergeAndSortResults(SemanticVectorResults,SynonymOverlapResults,CQEditDistanceResults);
+		List<OdpSearchResult> mergedResults = mergeAndSortResults(SemanticVectorResults,SynonymOverlapResults,CQEditDistanceResults);
 		List<OdpSearchResult> enrichedResults = enrichResults(mergedResults);
 		List<OdpSearchResult> filteredResults = filterResults(enrichedResults, filterConfiguration);
 		
