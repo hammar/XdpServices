@@ -5,6 +5,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import edu.stanford.bmir.protege.web.shared.xd.OdpDetails;
 import edu.stanford.bmir.protege.web.shared.xd.OdpSearchFilterConfiguration;
 import edu.stanford.bmir.protege.web.shared.xd.OdpSearchResult;
 
@@ -16,6 +17,11 @@ public class SearchController {
     		@RequestBody(required=false) OdpSearchFilterConfiguration filterConfiguration) {
     	// Simply defer execution to CompositeSearch
     	return CompositeSearch.INSTANCE.runSearch(queryString,filterConfiguration);
+    }
+    
+    @RequestMapping("/odpDetails")
+    public OdpDetails odpDetails(@RequestParam(value="uri", required=true)String uri) {
+    	return DataFetcher.INSTANCE.getOdpDetails(uri);
     }
     
     @RequestMapping("/rebuildIndex")
