@@ -196,6 +196,7 @@ public class CompositeSearch {
 		for (int i=0; i < resultLists.length; i++) {
 			concatenatedResultsList.addAll(resultLists[i]);
 		}
+
 		
 		// Merge scores using Map
 		// Note that the map is string,double - since equality comparison of OdpDetails would be a nuisance, given
@@ -373,6 +374,7 @@ public class CompositeSearch {
 						// Invert edit distance to get similarity score
 						Double invertedDistance = 1.0 - shortestDistance;
 						
+						
 						// Create score entry and add to results list
 						OdpSearchResult entry = new OdpSearchResult(new OdpDetails(suggestedOdpUri),invertedDistance);
 						resultsList.add(entry);
@@ -407,7 +409,9 @@ public class CompositeSearch {
 					String suggestedOdpUri = uriField.stringValue();
 					
 					IndexableField field = doc.getField("synonyms");
-					Double matchScore = 0.0;
+					// Start at very low but non-zero confidence, to avoid NaN bugs when reindexing
+					// to 0-1 scale.
+					Double matchScore = 0.0001;
 					if (field != null) {
 						String synonymString = field.stringValue();
 						List<String> synonyms = new ArrayList<String>(Arrays.asList(synonymString.split(" ")));
