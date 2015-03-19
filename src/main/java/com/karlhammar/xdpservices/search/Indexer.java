@@ -86,6 +86,8 @@ public class Indexer {
 	 * @return A user friendly indexing success/failure message string.
 	 */
 	public String buildIndex() {
+		log.info("Initiating index re-build.");
+		
 		String odpRepositoryPath = searchProperties.getProperty("odpRepositoryPath");
 		String luceneIndexPath = searchProperties.getProperty("luceneIndexPath");
 		File odpRepository = new File(odpRepositoryPath);
@@ -97,13 +99,14 @@ public class Indexer {
 			return "Index rebuild failed.";
 		} else {
 			try {
+				// First build Lucene index
+				long luceneStartTime = System.nanoTime();
 				Directory dir = FSDirectory.open(luceneIndex);
 				Analyzer analyzer = new StandardAnalyzer(Version.LUCENE_46);
 				IndexWriterConfig iwc = new IndexWriterConfig(
 						Version.LUCENE_46, analyzer);
 				iwc.setOpenMode(OpenMode.CREATE);
 				writer = new IndexWriter(dir, iwc);
-				long startTime = System.nanoTime();
 				String[] files = odpRepository.list();
 				for (int i = 0; i < files.length; i++) {
 					// Ignore dotfiles
@@ -115,10 +118,18 @@ public class Indexer {
 					}
 				}
 				writer.close();
-				long endTime = System.nanoTime();
-				float duration = (endTime - startTime) / 1000000000;
-				return String.format("Index rebuilt in %s seconds.", duration);
-			} catch (IOException ex) {
+				long luceneEndTime = System.nanoTime();
+				float luceneDuration = (luceneEndTime - luceneStartTime) / 1000000000;
+				String luceneStatus = String.format("Lucene index rebuilt in %.1f seconds.", luceneDuration);
+				log.info(luceneStatus);
+				
+				// Then build Semantic Vectors index
+				String vectorsStatus = buildVectorsIndex();
+				log.info(vectorsStatus);
+				
+				return String.format("%s %s",luceneStatus,vectorsStatus);
+			} 
+			catch (IOException ex) {
 				log.fatal(String
 						.format("IO operations on index path %s failed. Error message: %s",
 								ex.getMessage()));
@@ -126,6 +137,16 @@ public class Indexer {
 			}
 		}
 	}
+	
+	
+	private static String buildVectorsIndex() {
+		long vectorsStartTime = System.nanoTime();
+		// TODO: here we actually rebuild semantic vectors index
+		long vectorsEndTime = System.nanoTime();
+		float vectorsDuration = (vectorsEndTime - vectorsStartTime) / 1000000000;
+		return String.format("Semantic Vectors index rebuilt in %.1f seconds.", vectorsDuration);
+	}
+	
 
 	
 	/**
@@ -135,6 +156,8 @@ public class Indexer {
 	 */
 	private static void indexOdp(OdpDetails odp) throws IOException {
 		
+		log.info(String.format("Indexing: %s", odp.getUri()));
+		
 		// Make a new, empty Lucene document
         Document doc = new Document();
         
@@ -142,26 +165,46 @@ public class Indexer {
         Field uriField = new StringField("uri", odp.getUri(), Field.Store.YES);
         doc.add(uriField);
         
+        // Add name
+        if (odp.getName() != null) {
+	        Field nameField = new StringField("name", odp.getName(), Field.Store.YES);
+	        doc.add(nameField);
+        }
+        
         // Add CQ:s
-        for (String cq: odp.getCqs()) {
-        	Field cqField = new StringField("cqs", cq, Field.Store.YES);
-        	doc.add(cqField);
+        if (odp.getCqs() != null) {
+	        for (String cq: odp.getCqs()) {
+	        	Field cqField = new StringField("cqs", cq, Field.Store.YES);
+	        	doc.add(cqField);
+	        }
         }
         
         // Add description
-        Field descriptionField = new StringField("description", odp.getDescription(), Field.Store.YES);
-        doc.add(descriptionField);
+        if (odp.getDescription() != null) {
+        	Field descriptionField = new StringField("description", odp.getDescription(), Field.Store.YES);
+        	doc.add(descriptionField);
+        }
+        
+        // Add image
+        if (odp.getImage() != null) {
+        	Field imageField = new StringField("image", odp.getImage(), Field.Store.YES);
+        	doc.add(imageField);
+        }
 
         // Add classes
-        for (String aClass: odp.getClasses()) {
-        	Field classesField = new StringField("classes", aClass, Field.Store.YES);
-        	doc.add(classesField);
+        if (odp.getClass() != null) {
+	        for (String aClass: odp.getClasses()) {
+	        	Field classesField = new StringField("classes", aClass, Field.Store.YES);
+	        	doc.add(classesField);
+	        }
         }
         
         // Add properties
-        for (String aProperty: odp.getProperties()) {
-        	Field propertiesField = new StringField("properties", aProperty, Field.Store.YES);
-        	doc.add(propertiesField);
+        if (odp.getProperties() != null) {
+	        for (String aProperty: odp.getProperties()) {
+	        	Field propertiesField = new StringField("properties", aProperty, Field.Store.YES);
+	        	doc.add(propertiesField);
+	        }
         }
         
 		// TODO: Need "synonyms" field (check out how this is generated from WordNet in AMI1 codebase)
@@ -257,7 +300,7 @@ public class Indexer {
         
         // Get all annotations on ODP ontology
         for (OWLAnnotation annotation: odp.getAnnotations()) {
-        	if (annotation.getProperty() == df.getRDFSLabel() && annotation.getValue() instanceof OWLLiteral) {
+        	if (annotation.getProperty().getIRI().equals(df.getRDFSLabel().getIRI()) && annotation.getValue() instanceof OWLLiteral) {
         		OWLLiteral val = (OWLLiteral) annotation.getValue();
         		odpName = val.getLiteral();
         	}
@@ -296,6 +339,16 @@ public class Indexer {
         		OWLLiteral val = (OWLLiteral) annotation.getValue();
         		odpScenariosList.add(val.getLiteral());
         	}
+        }
+        
+        // In the case that no rdfs:label exists, construct odp name from ODP uri
+        if (odpName == null) {
+        	odpName = odpUri;
+        	if (odpUri.endsWith("/")) {
+        		// Remove trailing slash
+        		odpName = odpUri.substring(0, odpUri.lastIndexOf("/")-1);
+        	}
+        	odpName = odpName.substring(odpUri.lastIndexOf("/")+1);
         }
         
         // Merge intents, solutions, and consequences into one field in structured manner.

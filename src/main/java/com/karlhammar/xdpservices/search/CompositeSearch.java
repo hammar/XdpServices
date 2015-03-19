@@ -20,11 +20,18 @@ import java.util.Set;
 import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.apache.lucene.analysis.Analyzer;
+import org.apache.lucene.analysis.core.WhitespaceAnalyzer;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexableField;
+import org.apache.lucene.queryparser.classic.QueryParser;
+import org.apache.lucene.search.IndexSearcher;
+import org.apache.lucene.search.Query;
+import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.store.FSDirectory;
+import org.apache.lucene.util.Version;
 
 import pitt.search.semanticvectors.FlagConfig;
 import pitt.search.semanticvectors.SearchResult;
@@ -51,6 +58,7 @@ public class CompositeSearch {
 	private static IDictionary wordnetDictionary;
 	private static Boolean useWordNet; 
 	private static IndexReader luceneReader;
+	private static IndexSearcher luceneSearcher;
 	private static Boolean useLucene;
 	private static Properties searchProperties;
 	
@@ -77,6 +85,7 @@ public class CompositeSearch {
 		try {
 			String luceneIndexPath = searchProperties.getProperty("luceneIndexPath");
 			luceneReader = DirectoryReader.open(FSDirectory.open(new File(luceneIndexPath)));
+			luceneSearcher = new IndexSearcher(luceneReader);
 			useLucene = true;
 		} 
 		catch (IOException e) {
@@ -225,13 +234,50 @@ public class CompositeSearch {
 	/**
 	 * Enrich the metadata of ODPs in the input list of search results; search components may for efficiency reasons
 	 * return search results where one or more ODP fields are null; this is where those fields are updated from
-	 * the ODP metadata repository.
+	 * the Lucene index.
+	 * 
+	 * Note: for the time being we only enrich by the name field. More may be added in future.
+	 * 
 	 * @param inputList List of ODP search results to be enriched.
 	 * @return An enriched list with no ODPs having any null fields.
 	 */
 	private static List<OdpSearchResult> enrichResults(List<OdpSearchResult> inputList) {
-		// TODO: Implement this
-		return inputList;
+		if (!useLucene) {
+			// If Lucene inactivated, return immediately.
+			return inputList;
+		}
+		else {
+			// Set up stuff that will be needed
+			List<OdpSearchResult> outputList = new ArrayList<OdpSearchResult>();
+			Analyzer analyzer = new WhitespaceAnalyzer(Version.LUCENE_46);
+			QueryParser queryParser = new QueryParser(Version.LUCENE_46, "uri", analyzer);
+
+			// Iterate over input list
+			for (OdpSearchResult result: inputList) {
+
+				// Get details for each result list entry
+				String odpUri = result.getOdp().getUri();
+				Double confidence = result.getConfidence();
+
+				// Search Lucene index to find ODP document 
+				try {
+					// Add quotes to search string before parsing to search for exact match.
+					Query query = queryParser.parse(String.format("\"%s\"", odpUri));
+					ScoreDoc[] hits = luceneSearcher.search(query, null, 1).scoreDocs;
+					Document hit = luceneSearcher.doc(hits[0].doc);
+
+					IndexableField nameField = hit.getField("name");
+					String odpName = nameField.stringValue();
+					OdpSearchResult newResult = new OdpSearchResult(new OdpDetails(odpUri,odpName), confidence);
+					outputList.add(newResult);
+				} 
+				catch (Exception e) {
+					log.error(String.format("Unable to enrich ODP %s: search failed with message: %s", odpUri, e.getMessage()));
+					continue;
+				}
+			}
+			return outputList;
+		}
 	}
 	
 	
@@ -481,11 +527,13 @@ public class CompositeSearch {
 		}
 		
 		// Execute searches across all search engine methods
-		List<OdpSearchResult> SemanticVectorResults = SemanticVectorSearch(inputTermsEnriched);
+		// TODO: Enable semantic vectors search once semantic vectors index is rebuilt
+		//List<OdpSearchResult> SemanticVectorResults = SemanticVectorSearch(inputTermsEnriched);
 		List<OdpSearchResult> SynonymOverlapResults = SynonymOverlapSearch(inputTermsEnriched);
 		List<OdpSearchResult> CQEditDistanceResults = CQEditDistanceSearch(queryString);
 		
-		List<OdpSearchResult> mergedResults = mergeAndSortResults(SemanticVectorResults,SynonymOverlapResults,CQEditDistanceResults);
+		List<OdpSearchResult> mergedResults = mergeAndSortResults(SynonymOverlapResults,CQEditDistanceResults);
+		//List<OdpSearchResult> mergedResults = mergeAndSortResults(SemanticVectorResults,SynonymOverlapResults,CQEditDistanceResults);
 		List<OdpSearchResult> enrichedResults = enrichResults(mergedResults);
 		List<OdpSearchResult> filteredResults = filterResults(enrichedResults, filterConfiguration);
 		
