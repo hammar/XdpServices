@@ -5,6 +5,7 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.net.URL;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -45,6 +46,13 @@ import org.springframework.util.StringUtils;
 
 import com.google.common.base.CaseFormat;
 
+import edu.mit.jwi.Dictionary;
+import edu.mit.jwi.IDictionary;
+import edu.mit.jwi.item.IIndexWord;
+import edu.mit.jwi.item.ISynset;
+import edu.mit.jwi.item.IWord;
+import edu.mit.jwi.item.IWordID;
+import edu.mit.jwi.item.POS;
 import edu.stanford.bmir.protege.web.shared.xd.OdpDetails;
 
 public class Indexer {
@@ -57,6 +65,8 @@ public class Indexer {
 	private static Set<String> stopwords;
 	private static Properties searchProperties;
 	private static IndexWriter writer;
+	private static IDictionary wordnetDictionary;
+	private static Boolean useWordNet;
 
 	/**
 	 * Private singleton constructor setting up all the statics that are needed. 
@@ -65,8 +75,23 @@ public class Indexer {
 		log = LogFactory.getLog(Indexer.class);
 		loadSearchProperties();
 		stopwords = loadStopWords();
-		//loadWordNetDictionary();
+		loadWordNetDictionary();
 		//loadLuceneReader();
+	}
+	
+	
+	private static void loadWordNetDictionary() {
+		try {
+			String WnDictPath = searchProperties.getProperty("wordNetPath");
+			URL url = new URL("file", null, WnDictPath);
+			wordnetDictionary = new Dictionary(url);
+			wordnetDictionary.open();
+			useWordNet = true;
+		}
+		catch (IOException ex) {
+			log.error(String.format("Unable to load WordNet. WordNet-based index synonym/hypernym enrichment disabled. Error message: %s", ex.getMessage()));
+			useWordNet = false;
+		}
 	}
 	
 	
@@ -260,17 +285,34 @@ public class Indexer {
         	allTermsMerged += StringUtils.arrayToDelimitedString(odp.getProperties(), " ") + " ";
         }
         
-        // Stop-word removal
+        // Junk character and stop-word removal
         String allTerms = "";
         for (String s: allTermsMerged.split(" ")) {
-        	if (!stopwords.contains(s)) {
+        	s = s.replaceAll("[^A-Za-z0-9 ]", "");
+        	if (!stopwords.contains(s) && !s.equalsIgnoreCase("")) {
         		allTerms += (s + " ");
         	}
         }
         Field allTermsField = new TextField("allterms", allTerms, Field.Store.YES);
         doc.add(allTermsField);
         
-		// TODO: Need "synonyms" field (check out how this is generated from WordNet in AMI1 codebase)
+        // If WordNet is enabled: find synonyms for each ODP word in WordNet 
+        // and add to index as one space-delimited string of synonym terms.
+        if (useWordNet) {
+        	String synonyms = "";
+        	for (String odpWord: allTerms.split(" ")) {
+        		IIndexWord idxWord = wordnetDictionary.getIndexWord(odpWord, POS.NOUN);
+        		if (idxWord != null) {
+        			IWordID wordID = idxWord.getWordIDs().get(0);
+        			IWord word = wordnetDictionary.getWord(wordID);
+        			ISynset synset = word.getSynset();
+        			for (IWord w: synset.getWords()) {
+        				synonyms += " " + w.getLemma();
+        			}
+        		}
+        	}
+        	doc.add(new TextField("synonyms", synonyms, Field.Store.YES));
+        }
         
         // Write or update index
         if (writer.getConfig().getOpenMode() == OpenMode.CREATE) {
