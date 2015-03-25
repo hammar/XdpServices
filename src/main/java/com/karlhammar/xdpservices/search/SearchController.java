@@ -19,6 +19,12 @@ public class SearchController {
     	return CompositeSearch.INSTANCE.runSearch(queryString,filterConfiguration);
     }
     
+    @RequestMapping("/odpsByCategory")
+    public OdpDetails[] odpsByCategory(@RequestParam(value="category", required=true) String category) {
+    	// Simply defer execution to CompositeSearch
+    	return DataFetcher.INSTANCE.getOdpsByCategory(category);
+    }
+    
     @RequestMapping("/odpDetails")
     public OdpDetails odpDetails(@RequestParam(value="uri", required=true)String uri) {
     	return DataFetcher.INSTANCE.getOdpDetails(uri);

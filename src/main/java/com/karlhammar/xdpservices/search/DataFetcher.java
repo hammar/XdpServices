@@ -3,6 +3,8 @@ package com.karlhammar.xdpservices.search;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Properties;
 
 import org.apache.commons.logging.Log;
@@ -65,6 +67,24 @@ public class DataFetcher {
 		}
 	}
 	
+	public OdpDetails[] getOdpsByCategory(String category) {
+		
+		// TODO: Add filtering by category here!
+		List<OdpDetails> odps = new ArrayList<OdpDetails>();
+		try {
+			for (int i=0; i<luceneReader.maxDoc(); i++) {
+			    Document doc = luceneReader.document(i);
+			    OdpDetails odp = new OdpDetails(doc.get("uri"),doc.get("name"));
+			    odps.add(odp);
+			}
+			return odps.toArray(new OdpDetails[odps.size()]);
+		}
+		catch (IOException e) {
+			log.error(String.format("Unable to retrieve ODP list for category %s: search failed with message: %s", category, e.getMessage()));
+			return null;
+		}
+	}
+	
 	/**
 	 * Enriches an OdpDetails object by looking up all fields in the Lucene index.
 	 * @param odpUri URI of ODP to enrich.
@@ -81,7 +101,6 @@ public class DataFetcher {
 			ScoreDoc[] hits = luceneSearcher.search(query, null, 1).scoreDocs;
 			Document hit = luceneSearcher.doc(hits[0].doc);
 
-			
 			// All initial fields
 			String odpName = null;
 			String odpDescription = null;
