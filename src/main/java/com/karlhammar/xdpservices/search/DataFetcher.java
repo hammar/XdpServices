@@ -1,7 +1,8 @@
 package com.karlhammar.xdpservices.search;
 
-import java.io.File;
 import java.io.IOException;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.Properties;
 
 import org.apache.commons.logging.Log;
@@ -17,7 +18,6 @@ import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.store.FSDirectory;
-import org.apache.lucene.util.Version;
 
 import edu.stanford.bmir.protege.web.shared.xd.OdpDetails;
 
@@ -56,8 +56,8 @@ public class DataFetcher {
 	
 	private static void loadLuceneReader() {
 		try {
-			String luceneIndexPath = searchProperties.getProperty("luceneIndexPath");
-			luceneReader = DirectoryReader.open(FSDirectory.open(new File(luceneIndexPath)));
+			Path luceneIndexPath = Paths.get(searchProperties.getProperty("luceneIndexPath"));
+			luceneReader = DirectoryReader.open(FSDirectory.open(luceneIndexPath));
 			luceneSearcher = new IndexSearcher(luceneReader);
 		} 
 		catch (IOException e) {
@@ -71,8 +71,8 @@ public class DataFetcher {
 	 * @return An OdpDetails object with all the fields that are stored in the index set.
 	 */
 	public OdpDetails getOdpDetails(String odpUri) {
-		Analyzer analyzer = new WhitespaceAnalyzer(Version.LUCENE_46);
-		QueryParser queryParser = new QueryParser(Version.LUCENE_46, "uri", analyzer);
+		Analyzer analyzer = new WhitespaceAnalyzer();
+		QueryParser queryParser = new QueryParser("uri", analyzer);
 
 		// Search Lucene index to find ODP document 
 		try {

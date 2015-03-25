@@ -1,11 +1,12 @@
 package com.karlhammar.xdpservices.search;
 
 import java.io.BufferedReader;
-import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.net.URL;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -31,7 +32,6 @@ import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.store.FSDirectory;
-import org.apache.lucene.util.Version;
 
 import pitt.search.semanticvectors.FlagConfig;
 import pitt.search.semanticvectors.SearchResult;
@@ -83,8 +83,8 @@ public class CompositeSearch {
 	
 	private static void loadLuceneReader() {
 		try {
-			String luceneIndexPath = searchProperties.getProperty("luceneIndexPath");
-			luceneReader = DirectoryReader.open(FSDirectory.open(new File(luceneIndexPath)));
+			Path luceneIndexPath = Paths.get(searchProperties.getProperty("luceneIndexPath"));
+			luceneReader = DirectoryReader.open(FSDirectory.open(luceneIndexPath));
 			luceneSearcher = new IndexSearcher(luceneReader);
 			useLucene = true;
 		} 
@@ -162,9 +162,10 @@ public class CompositeSearch {
 	 */
 	private static List<OdpSearchResult> SemanticVectorSearch(Set<String> queryTerms) {
 		String vectorBasePath = searchProperties.getProperty("semanticVectorsPath");
-		String queryVectorPath = String.format("%s/termvectors2.bin", vectorBasePath);
-		String searchVectorPath = String.format("%s/docvectors2.bin", vectorBasePath);
-		String[] configurationArray = {"-queryvectorfile",queryVectorPath,"-searchvectorfile", searchVectorPath,"-docidfield", "uri", "-searchtype", "SUM", "-numsearchresults", "25"};
+		String queryVectorPath = String.format("%s/termvectors.bin", vectorBasePath);
+		String searchVectorPath = String.format("%s/docvectors.bin", vectorBasePath);
+		//
+		String[] configurationArray = {"-contentsfields","allterms","-docidfield", "uri","-queryvectorfile",queryVectorPath,"-searchvectorfile", searchVectorPath, "-searchtype", "SUM", "-numsearchresults", "25"};
 		String[] queryTermsArray = queryTerms.toArray(new String[queryTerms.size()]);
 		String[] queryArray = ArrayUtils.addAll(configurationArray, queryTermsArray);
 		
@@ -248,8 +249,8 @@ public class CompositeSearch {
 		else {
 			// Set up stuff that will be needed
 			List<OdpSearchResult> outputList = new ArrayList<OdpSearchResult>();
-			Analyzer analyzer = new WhitespaceAnalyzer(Version.LUCENE_46);
-			QueryParser queryParser = new QueryParser(Version.LUCENE_46, "uri", analyzer);
+			Analyzer analyzer = new WhitespaceAnalyzer();
+			QueryParser queryParser = new QueryParser("uri", analyzer);
 
 			// Iterate over input list
 			for (OdpSearchResult result: inputList) {

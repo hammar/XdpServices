@@ -6,6 +6,8 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.net.URL;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -26,7 +28,6 @@ import org.apache.lucene.index.Term;
 import org.apache.lucene.index.IndexWriterConfig.OpenMode;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FSDirectory;
-import org.apache.lucene.util.Version;
 import org.semanticweb.owlapi.apibinding.OWLManager;
 import org.semanticweb.owlapi.io.FileDocumentSource;
 import org.semanticweb.owlapi.model.IRI;
@@ -43,6 +44,8 @@ import org.semanticweb.owlapi.model.OWLOntologyCreationException;
 import org.semanticweb.owlapi.model.OWLOntologyLoaderConfiguration;
 import org.semanticweb.owlapi.model.OWLOntologyManager;
 import org.springframework.util.StringUtils;
+
+import pitt.search.semanticvectors.BuildIndex;
 
 import com.google.common.base.CaseFormat;
 
@@ -139,9 +142,8 @@ public class Indexer {
 		log.info("Initiating index re-build.");
 		
 		String odpRepositoryPath = searchProperties.getProperty("odpRepositoryPath");
-		String luceneIndexPath = searchProperties.getProperty("luceneIndexPath");
+		Path luceneIndexPath = Paths.get(searchProperties.getProperty("luceneIndexPath"));
 		File odpRepository = new File(odpRepositoryPath);
-		File luceneIndex = new File(luceneIndexPath);
 		if (!odpRepository.isDirectory()) {
 			log.fatal(String.format(
 					"Configured ODP repository path is not a directory: %s",
@@ -151,10 +153,9 @@ public class Indexer {
 			try {
 				// First build Lucene index
 				long luceneStartTime = System.nanoTime();
-				Directory dir = FSDirectory.open(luceneIndex);
-				Analyzer analyzer = new StandardAnalyzer(Version.LUCENE_46);
-				IndexWriterConfig iwc = new IndexWriterConfig(
-						Version.LUCENE_46, analyzer);
+				Directory dir = FSDirectory.open(luceneIndexPath);
+				Analyzer analyzer = new StandardAnalyzer();
+				IndexWriterConfig iwc = new IndexWriterConfig(analyzer);
 				iwc.setOpenMode(OpenMode.CREATE);
 				writer = new IndexWriter(dir, iwc);
 				String[] files = odpRepository.list();
@@ -193,11 +194,11 @@ public class Indexer {
 		long vectorsStartTime = System.nanoTime();
 		String luceneIndexPath = searchProperties.getProperty("luceneIndexPath");
 		String vectorBasePath = searchProperties.getProperty("semanticVectorsPath");
-		String docVectorsPath = String.format("%s/termvectors", vectorBasePath);
-		String termVectorsPath = String.format("%s/docvectors", vectorBasePath);
+		String termVectorsPath = String.format("%stermvectors", vectorBasePath);
+		String docVectorsPath = String.format("%sdocvectors", vectorBasePath);
 		String[] configurationArray = {"-contentsfields","allterms","-docindexing","inmemory","-docvectorsfile",docVectorsPath,"-termvectorsfile", termVectorsPath,"-luceneindexpath",luceneIndexPath,"-docidfield","uri","-trainingcycles","2"};
-		try {			
-			CustomSemanticVectorsBuildIndex.main(configurationArray);
+		try {
+			BuildIndex.main(configurationArray);
 		} catch (Exception e) {
 			log.fatal(String.format("Semantic Vectors construction failed with error: %s", e.getMessage()));
 			return "Semantic Vectors index construction failed.";
@@ -224,6 +225,10 @@ public class Indexer {
         // Add URI 
         Field uriField = new StringField("uri", odp.getUri(), Field.Store.YES);
         doc.add(uriField);
+        
+        // TODO: temporary hack, remove once done
+        //Field pathField = new StringField("path", odp.getUri(), Field.Store.YES);
+        //doc.add(pathField);
         
         // Add name
         if (odp.getName() != null) {
@@ -293,7 +298,7 @@ public class Indexer {
         		allTerms += (s + " ");
         	}
         }
-        Field allTermsField = new TextField("allterms", allTerms, Field.Store.YES);
+        Field allTermsField = new TextField("allterms", allTerms, Field.Store.NO);
         doc.add(allTermsField);
         
         // If WordNet is enabled: find synonyms for each ODP word in WordNet 
