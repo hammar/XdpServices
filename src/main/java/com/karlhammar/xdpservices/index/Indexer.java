@@ -1,4 +1,4 @@
-package com.karlhammar.xdpservices.search;
+package com.karlhammar.xdpservices.index;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -48,6 +48,7 @@ import org.springframework.util.StringUtils;
 import pitt.search.semanticvectors.BuildIndex;
 
 import com.google.common.base.CaseFormat;
+import com.karlhammar.xdpservices.search.CompositeSearch;
 
 import edu.mit.jwi.Dictionary;
 import edu.mit.jwi.IDictionary;

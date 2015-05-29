@@ -1,4 +1,4 @@
-package com.karlhammar.xdpservices.search;
+package com.karlhammar.xdpservices.retrieve;
 
 import java.io.IOException;
 import java.nio.file.Path;
@@ -21,12 +21,14 @@ import org.apache.lucene.search.Query;
 import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.store.FSDirectory;
 
+import com.karlhammar.xdpservices.search.CompositeSearch;
+
 import edu.stanford.bmir.protege.web.shared.xd.OdpDetails;
 
-public class DataFetcher {
+public class MetadataFetcher {
 
 	// Singleton instance.
-	public final static DataFetcher INSTANCE = new DataFetcher();
+	public final static MetadataFetcher INSTANCE = new MetadataFetcher();
 
 	// Singleton properties.
 	private static Log log;
@@ -37,8 +39,8 @@ public class DataFetcher {
 	/**
 	 * Private singleton constructor setting up all the statics that are needed. 
 	 */
-	private DataFetcher() {
-		log = LogFactory.getLog(DataFetcher.class);
+	private MetadataFetcher() {
+		log = LogFactory.getLog(MetadataFetcher.class);
 		loadSearchProperties();
 		loadLuceneReader();
 	}
