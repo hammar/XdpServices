@@ -165,7 +165,7 @@ public class Indexer {
 					if (!candidateOdpFile.isHidden() && !candidateOdpFile.isDirectory()) {
 						OdpDetails odp = parseOdp(candidateOdpFile);
 						if (odp != null) {
-							indexOdp(odp);
+							indexOdp(odp, candidateOdpFile);
 						}
 					}
 				}
@@ -216,20 +216,20 @@ public class Indexer {
 	 * @param odpFile File to add to index.
 	 * @throws IOException 
 	 */
-	private static void indexOdp(OdpDetails odp) throws IOException {
+	private static void indexOdp(OdpDetails odp, File odpOnDisk) throws IOException {
 		
 		log.info(String.format("Indexing: %s", odp.getUri()));
 		
 		// Make a new, empty Lucene document
         Document doc = new Document();
         
+        // Store path of actual building block
+        Field pathField = new StringField("path", odpOnDisk.getCanonicalPath(), Field.Store.YES);
+        doc.add(pathField);
+        
         // Add URI 
         Field uriField = new StringField("uri", odp.getUri(), Field.Store.YES);
         doc.add(uriField);
-        
-        // TODO: temporary hack, remove once done
-        //Field pathField = new StringField("path", odp.getUri(), Field.Store.YES);
-        //doc.add(pathField);
         
         // Add name
         if (odp.getName() != null) {

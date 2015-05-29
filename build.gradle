@@ -30,9 +30,6 @@ repositories {
 
 dependencies {
 	compile("org.springframework.boot:spring-boot-starter-web")
-	compile("com.karlhammar:webprotege:2.5.0:classes") {
-    	transitive = false // To avoid bloating the generated JAR w/ all kinds of stuff.
-	}
 	compile("net.sourceforge.owlapi:owlapi-distribution:3.5.1")
 	compile("com.google.guava:guava:18.0")
 	compile("edu.mit:jwi:2.2.3")
@@ -40,7 +37,7 @@ dependencies {
 	compile("pitt.search:semanticvectors:5.9") {
 		exclude module:"lucene-demo"
 	}
-
+	compile("com.karlhammar:XdpShared:1.0")
 }
 
 springBoot {
