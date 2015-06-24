@@ -1,11 +1,15 @@
 package com.karlhammar.xdpservices.retrieve;
 
+import java.io.File;
 import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Properties;
+import java.util.Set;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -70,18 +74,39 @@ public class MetadataFetcher {
 	}
 	
 	public OdpDetails[] getOdpsByCategory(String category) {
-		
-		// TODO: Add filtering by category here!
-		List<OdpDetails> odps = new ArrayList<OdpDetails>();
 		try {
+			
+			// Generate set of suitable ODP iris from category matching CSV file on disk
+			Set<String> matchingOdpIris = new HashSet<String>();
+			File odpCategoryMappingFile = new File(MetadataFetcher.class.getResource("odpCategoryMapping.csv").getFile());
+			List<String> lines = Files.readAllLines(odpCategoryMappingFile.toPath());
+			for (String line: lines) {
+				String[] lineComponents = line.split(";");
+				String lineCategory = lineComponents[0];
+				String lineOdpIri = lineComponents[1];
+				if (lineCategory.equalsIgnoreCase(category)) {
+					matchingOdpIris.add(lineOdpIri);
+				}
+			}
+			
+			// 
+			
+			// Iterate over index and find documents with IRIs that are in the set of suitable ODPs
+			List<OdpDetails> odps = new ArrayList<OdpDetails>();
 			for (int i=0; i<luceneReader.maxDoc(); i++) {
-			    Document doc = luceneReader.document(i);
-			    OdpDetails odp = new OdpDetails(doc.get("uri"),doc.get("name"));
-			    odps.add(odp);
+				Document doc = luceneReader.document(i);
+				String odpIri = doc.get("uri");
+				// If category is "Any", return all ODPs. 
+				// If not, only return if ODP IRI is in matching set of IRIs
+				if (category.equalsIgnoreCase("Any") || matchingOdpIris.contains(odpIri)) {
+					OdpDetails odp = new OdpDetails(doc.get("uri"),doc.get("name"));
+					odps.add(odp);
+				}
 			}
 			return odps.toArray(new OdpDetails[odps.size()]);
+			
 		}
-		catch (IOException e) {
+		catch (Exception e) {
 			log.error(String.format("Unable to retrieve ODP list for category %s: search failed with message: %s", category, e.getMessage()));
 			return null;
 		}
@@ -151,6 +176,17 @@ public class MetadataFetcher {
 		catch (Exception e) {
 			log.error(String.format("Unable to enrich ODP %s: search failed with message: %s", odpUri, e.getMessage()));
 			return null;
+		}
+	}
+
+	public String[] getOdpCategories() {
+		try {
+			File odpCategoriesFile = new File(MetadataFetcher.class.getResource("odpCategories.txt").getFile());
+			List<String> odpCategories = Files.readAllLines(odpCategoriesFile.toPath());
+			return odpCategories.toArray(new String[odpCategories.size()]);
+		}
+		catch (Exception e) {
+			return new String[]{String.format("Failed to get ODP categories. Exception thrown: ", e.toString())};
 		}
 	}
 }

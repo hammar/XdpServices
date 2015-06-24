@@ -24,6 +24,11 @@ public class RetrieveController {
     	return MetadataFetcher.INSTANCE.getOdpsByCategory(category);
     }
     
+    @RequestMapping("/retrieve/odpCategories")
+    public String[] odpCategories() {
+    	return MetadataFetcher.INSTANCE.getOdpCategories();
+    }
+    
 	@RequestMapping("/retrieve/odpBuildingBlockTurtle")
 	public String getOdpBuildingBlockTurtle(@RequestParam(value="uri", required=true)String odpIri) throws OWLOntologyCreationException, OWLOntologyStorageException, ParseException, IOException {
 		return OdpFetcher.getOdpBuildingBlockTurtle(odpIri);

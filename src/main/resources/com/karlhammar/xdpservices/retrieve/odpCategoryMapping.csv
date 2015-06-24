@@ -1,0 +1,111 @@
+Academy;http://www.cs.kent.edu/~malzyoud/ODPs/Course.ow.htm
+Agriculture;http://www.fao.org/aims/aos/aos.owl
+Agriculture;http://www.fao.org/aims/aos#hasPest
+Biology;http://www.fao.org/aims/aos/fi/species_v1.0_model.owl
+Biology;Roehl-jansen_disposition-pattern.owl
+Biology;http://www.ontologydesignpatterns.org/cp/owl/gotop.owl
+Business;http://www.ontology.se/odp/content/owl/Action.owl
+Business;http://www.ontology.se/odp/content/owl/CommunicationEvent.owl
+Business;http://www.ontologydesignpatterns.org/cp/owl/invoice.owl
+Business;http://www.isoco.com/ontologies/neon/PharmaInnovaODP.owl
+Business;http://www.ontologydesignpatterns.org/cp/owl/timeindexedpersonrole.owl
+Cartography;http://gaia.gge.unb.ca/eg/HistoricalMap.owl
+Chemistry;http://descartes-core.org/ontologies/mt/1.0/MaterialTransformationPattern.owl
+Document Management;http://ontologydesignpatterns.org/cp/owl/tagging.owl
+Earth Science or Geoscience;https://wiki.auckland.ac.nz/download/attachments/52016791/TransportPattern.owl
+Ecology;http://descartes-core.org/ontologies/mt/1.0/MaterialTransformationPattern.owl
+Event Processing;http://www.ontologydesignpatterns.org/cp/owl/eventprocessing.owl
+Explanation;http://linkedu.eu/dedalo/explanationODP.owl
+Fishery;http://ontologydesignpatterns.org/cp/owl/fsdas/aquaticresourceobservation.owl
+Fishery;http://www.ontologydesignpatterns.org/cp/owl/fsdas/aquaticresources.owl
+Fishery;http://www.fao.org/aims/aos/fi/species_v1.0_model.owl
+Fishery;http://www.ontologydesignpatterns.org/cp/owl/fsdas/catchrecord.owl
+Fishery;http://www.ontologydesignpatterns.org/cp/owl/fsdas/climaticzone.owl
+Fishery;http://www.ontologydesignpatterns.org/cp/owl/fsdas/gearvessel.owl
+Fishery;http://www.ontologydesignpatterns.org/cp/owl/fsdas/gearwaterarea.owl
+Fishery;http://gate.ac.uk/gate-extras/neon/ontologies/metonymy1_FAO.owl
+Fishery;http://www.ontologydesignpatterns.org/cp/owl/fsdas/resourceabundanceobservation.owl
+Fishery;http://www.ontologydesignpatterns.org/cp/owl/fsdas/resourceexploitationobservation.owl
+Fishery;http://www.ontologydesignpatterns.org/cp/owl/fsdas/vesselspecies.owl
+General;http://www.ontology.se/odp/content/owl/Action.owl
+General;http://descartes-core.org/ontologies/activities/1.0/ActivityPattern.owl
+General;http://www.ontologydesignpatterns.org/cp/owl/bag.owl
+General;http://www.ontologydesignpatterns.org/cp/owl/classification.owl
+General;http://www.ontologydesignpatterns.org/cp/owl/coparticipation.owl
+General;http://www.ontologydesignpatterns.org/cp/owl/collectionentity.owl
+General;http://criteria-modeling.googlecode.com/svn/trunk/criterion.owl
+General;http://criteria-modeling.googlecode.com/svn/trunk/criterion_setter.owl
+General;http://www.ontologydesignpatterns.org/cp/owl/description.owl
+General;Roehl-jansen_disposition-pattern.owl
+General;http://www.ontologydesignpatterns.org/cp/owl/eventprocessing.owl
+General;http://ontologydesignpatterns.org/cp/owl/intensionextension.owl
+General;http://www.essepuntato.it/2010/06/literalreification
+General;http://www.ontologydesignpatterns.org/cp/owl/naryparticipation.owl
+General;http://delicias.dia.fi.upm.es/ontologies/ObjectWithStates.owl
+General;http://ontologydesignpatterns.org/cp/owl/objectrole.owl
+General;http://www.ontologydesignpatterns.org/cp/owl/observation.owl
+General;http://ontologydesignpatterns.org/cp/owl/parameter.owl
+General;http://www.ontology.se/odp/content/owl/ParticipantRole.owl
+General;http://ontologydesignpatterns.org/cp/owl/participation.owl
+General;http://www.ontologydesignpatterns.org/cp/owl/place.owl
+General;http://ontologydesignpatterns.org/cp/owl/region.owl
+General;http://ontologydesignpatterns.org/cp/owl/sequence.owl
+General;http://www.ontologydesignpatterns.org/cp/owl/situation.owl
+General;http://ontologydesignpatterns.org/cp/owl/tagging.owl
+General;http://smi-protege.stanford.edu/collab-protege/templInstPattern/template_instance_odp.owl
+General;http://ontologydesignpatterns.org/cp/owl/timeindexedparticipation.owl
+General;http://www.ontologydesignpatterns.org/cp/owl/timeindexedpersonrole.owl
+General;http://ontologydesignpatterns.org/cp/owl/timeindexedsituation.owl
+General;http://ontologydesignpatterns.org/cp/owl/topic.owl
+General;http://ontologydesignpatterns.org/cp/owl/transition.owl
+General;http://www.ontologydesignpatterns.org/cp/owl/typesofentities.owl
+Geology;https://wiki.auckland.ac.nz/download/attachments/52016791/TransportPattern.owl
+License;http://purl.oclc.org/NET/lldr/ns#
+Linguistic;http://sites.google.com/site/pierreyvesvandenbussche/resources/ConceptTerms.owl
+Linked Data;http://purl.oclc.org/NET/lldr/ns#
+Management;http://www.ontologydesignpatterns.org/cp/owl/agentrole.owl
+Management;http://www.ontologydesignpatterns.org/cp/owl/taskrole.owl
+Management;http://www.ontologydesignpatterns.org/cp/owl/taskexecution.owl
+Manufacturing;http://descartes-core.org/ontologies/mt/1.0/MaterialTransformationPattern.owl
+Manufacturing;http://ontologydesignpatterns.org/cp/owl/transition.owl
+Multimedia;http://mklab.iti.gr/pericles/DigitalVideo_ODP.owl
+Organization;http://www.ontologydesignpatterns.org/cp/owl/agentrole.owl
+Organization;http://www.ontology.se/odp/content/owl/CommunicationEvent.owl
+Organization;http://www.ontology.se/odp/content/owl/ParticipantRole.owl
+Organization;http://www.ontologydesignpatterns.org/cp/owl/taskrole.owl
+Organization;http://ontologydesignpatterns.org/cp/owl/sequence.owl
+Organization;http://www.ontologydesignpatterns.org/cp/owl/taskexecution.owl
+Organization;http://www.ontologydesignpatterns.org/cp/owl/timeindexedpersonrole.owl
+Participation;http://www.ontology.se/odp/content/owl/CommunicationEvent.owl
+Parts and Collections;http://www.ontologydesignpatterns.org/cp/owl/bag.owl
+Parts and Collections;http://www.ontologydesignpatterns.org/cp/owl/collectionentity.owl
+Parts and Collections;http://www.ontologydesignpatterns.org/cp/owl/componency.owl
+Parts and Collections;http://sites.google.com/site/pierreyvesvandenbussche/resources/ConceptGroup.owl
+Parts and Collections;http://www.ontologydesignpatterns.org/cp/owl/constituency.owl
+Parts and Collections;http://www.ontologydesignpatterns.org/cp/owl/partof.owl
+Parts and Collections;http://delicias.dia.fi.upm.es/ontologies/SimpleOrAggregated.owl
+Parts and Collections;http://www.ontologydesignpatterns.org/cp/owl/timeindexedpartof.owl
+Planning;http://www.ontology.se/odp/content/owl/CommunicationEvent.owl
+Product development;http://www.ontology.se/odp/content/owl/Action.owl
+Product development;http://www.ontology.se/odp/content/owl/CommunicationEvent.owl
+Scheduling;http://www.ontologydesignpatterns.org/cp/owl/agentrole.owl
+Scheduling;http://www.ontologydesignpatterns.org/cp/owl/taskrole.owl
+Scheduling;http://www.ontologydesignpatterns.org/cp/owl/taskexecution.owl
+Science;http://www.ontologydesignpatterns.org/cp/owl/observation.owl
+Semiotics;http://www.ontologydesignpatterns.org/cp/owl/informationrealization.owl
+Semiotics;http://ontologydesignpatterns.org/cp/owl/intensionextension.owl
+Software Engineering;http://www.cs.ubbcluj.ro/~ivpop/ontologies/oopmetrics.owl
+Time;http://delicias.dia.fi.upm.es/ontologies/PeriodicInterval.owl
+Time;http://ontologydesignpatterns.org/cp/owl/sequence.owl
+Time;http://www.ontologydesignpatterns.org/cp/owl/timeinterval.owl
+University;http://www.cs.kent.edu/~malzyoud/ODPs/Course.ow.htm
+Upper Ontology;Roehl-jansen_disposition-pattern.owl
+Vocabulary;http://sites.google.com/site/pierreyvesvandenbussche/resources/ConceptGroup.owl
+Vocabulary;http://sites.google.com/site/pierreyvesvandenbussche/resources/ConceptTerms.owl
+Web 2.0;http://ontologydesignpatterns.org/cp/owl/tagging.owl
+Workflow;http://descartes-core.org/ontologies/activities/1.0/ActivityPattern.owl
+Workflow;http://descartes-core.org/ontologies/mt/1.0/MaterialTransformationPattern.owl
+Workflow;http://www.ontologydesignpatterns.org/cp/owl/reaction.owl
+Workflow;http://ontologydesignpatterns.org/cp/owl/sequence.owl
+Workflow;http://www.ontologydesignpatterns.org/cp/owl/taskexecution.owl
+Workflow;http://ontologydesignpatterns.org/cp/owl/transition.owl
