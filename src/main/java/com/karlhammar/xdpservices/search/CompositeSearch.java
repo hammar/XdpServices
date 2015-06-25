@@ -161,26 +161,34 @@ public class CompositeSearch {
 	 * @return List of ODP search results with confidences.
 	 */
 	private static List<OdpSearchResult> SemanticVectorSearch(Set<String> queryTerms) {
-		String vectorBasePath = searchProperties.getProperty("semanticVectorsPath");
-		String queryVectorPath = String.format("%s/termvectors.bin", vectorBasePath);
-		String searchVectorPath = String.format("%s/docvectors.bin", vectorBasePath);
-		//
-		String[] configurationArray = {"-contentsfields","allterms","-docidfield", "uri","-queryvectorfile",queryVectorPath,"-searchvectorfile", searchVectorPath, "-searchtype", "SUM", "-numsearchresults", "25"};
-		String[] queryTermsArray = queryTerms.toArray(new String[queryTerms.size()]);
-		String[] queryArray = ArrayUtils.addAll(configurationArray, queryTermsArray);
-		
-		FlagConfig config = FlagConfig.getFlagConfig(queryArray);
-		List<SearchResult> results = pitt.search.semanticvectors.Search.runSearch(config);
-		List<OdpSearchResult> resultsList = new ArrayList<OdpSearchResult>();
-		if (results.size() > 0) {
-		      for (SearchResult result: results) {
-		    	  String suggestedOdpPath = result.getObjectVector().getObject().toString();
-		    	  Double suggestedOdpScore = result.getScore();
-		    	  OdpSearchResult entry = new OdpSearchResult(new OdpDetails(suggestedOdpPath),suggestedOdpScore);
-		    	  resultsList.add(entry);
-		      }
+		try {
+			String vectorBasePath = searchProperties.getProperty("semanticVectorsPath");
+			String queryVectorPath = String.format("%s/termvectors.bin", vectorBasePath);
+			String searchVectorPath = String.format("%s/docvectors.bin", vectorBasePath);
+			//
+			String[] configurationArray = {"-contentsfields","allterms","-docidfield", "uri","-queryvectorfile",queryVectorPath,"-searchvectorfile", searchVectorPath, "-searchtype", "SUM", "-numsearchresults", "25"};
+			String[] queryTermsArray = queryTerms.toArray(new String[queryTerms.size()]);
+			String[] queryArray = ArrayUtils.addAll(configurationArray, queryTermsArray);
+			
+			FlagConfig config = FlagConfig.getFlagConfig(queryArray);
+			List<SearchResult> results = pitt.search.semanticvectors.Search.runSearch(config);
+			List<OdpSearchResult> resultsList = new ArrayList<OdpSearchResult>();
+			if (results.size() > 0) {
+			      for (SearchResult result: results) {
+			    	  String suggestedOdpPath = result.getObjectVector().getObject().toString();
+			    	  Double suggestedOdpScore = result.getScore();
+			    	  OdpSearchResult entry = new OdpSearchResult(new OdpDetails(suggestedOdpPath),suggestedOdpScore);
+			    	  resultsList.add(entry);
+			      }
+			}
+			return resultsList;
 		}
-		return resultsList;
+		catch (IllegalArgumentException ex) {
+			// This happens if the incoming query terms, after filtering for junk,
+			// aren't actually reasonable terms in the english language at all.
+			// If so, return an empty result.
+			return new ArrayList<OdpSearchResult>();
+		}
 	}
 	
 	
