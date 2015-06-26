@@ -145,7 +145,7 @@ public class MetadataFetcher {
 			
 			IndexableField descriptionField = hit.getField("description");
 			if (descriptionField != null) {
-				odpDescription = descriptionField.stringValue();
+				odpDescription = descriptionField.stringValue().trim().replace("\n\n\n\n", "\n\n");
 			}
 			
 			IndexableField[] cqFields = hit.getFields("cqs");
@@ -157,6 +157,9 @@ public class MetadataFetcher {
 			IndexableField imageField = hit.getField("image");
 			if (imageField != null) {
 				odpImage = imageField.stringValue();
+			}
+			else {
+				odpImage = getOdpImageFromCsvLookup(odpUri);
 			}
 			
 			IndexableField[] classesFields = hit.getFields("classes");
@@ -178,7 +181,26 @@ public class MetadataFetcher {
 			return null;
 		}
 	}
-
+	
+	public String getOdpImageFromCsvLookup(String odpIri) {
+		try {
+			File odpIllustrationMappingFile = new File(MetadataFetcher.class.getResource("odpIllustrationMapping.csv").getFile());
+			List<String> lines = Files.readAllLines(odpIllustrationMappingFile.toPath());
+			for (String line: lines) {
+				String[] lineComponents = line.split(";");
+				String lineIri = lineComponents[0];
+				String lineIllustrationIri = lineComponents[1];
+				if (lineIri.equalsIgnoreCase(odpIri)) {
+					return lineIllustrationIri;
+				}
+			}
+			return null;
+		}
+		catch (Exception ex) {
+			return null;
+		}
+	}
+	
 	public String[] getOdpCategories() {
 		try {
 			File odpCategoriesFile = new File(MetadataFetcher.class.getResource("odpCategories.txt").getFile());
