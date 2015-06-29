@@ -10,3 +10,4 @@ ODP indexing and search services supporting the XD for WebProtégé extension (h
 
 * Install SemanticVectors 5.9 or greater (`git clone` followed by `mvn install`)
 * Build to jar: `gradle jar`
+* Build redistributable/runnable jar: `gradle bootRepackage`
