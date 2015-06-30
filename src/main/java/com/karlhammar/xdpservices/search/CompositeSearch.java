@@ -136,18 +136,19 @@ public class CompositeSearch {
 		inputString = inputString.toLowerCase();
 		inputString = inputString.replace("?", "");
 		inputString = inputString.replace("/", "");
+		inputString = inputString.replace(".", "");
 		String[] splitInput = inputString.split(" ");
-		return splitInput;
+		//return splitInput;
 		// The below code does stop word removal on the input query. 
 		// It has (strangely?) proven to lower recall across the dataset so is commented out for now.
-		/*List<String> stopWordRemovedInput = new ArrayList<String>();
+		List<String> stopWordRemovedInput = new ArrayList<String>();
 		for (String term: splitInput) {
 			if (!stopwords.contains(term)) {
 				stopWordRemovedInput.add(term);
 			}
 		}
 		String[] returnArray = stopWordRemovedInput.toArray(new String[stopWordRemovedInput.size()]);
-		return returnArray;*/
+		return returnArray;
 	}
 	
 	
@@ -397,6 +398,53 @@ public class CompositeSearch {
 		}
 	
 	
+	private static List<OdpSearchResult> DescriptionAndScenarioOverlapSearch(String[] queryTerms) {
+		List<OdpSearchResult> resultsList = new ArrayList<OdpSearchResult>();
+		if (!useLucene) {
+			return resultsList;
+		}
+		else {
+			for (int i=0; i<luceneReader.maxDoc(); i++) {
+				try {
+					Document doc = luceneReader.document(i);
+					IndexableField uriField = doc.getField("uri");
+					String suggestedOdpUri = uriField.stringValue();
+					Double matchScore = 0.0001;
+					
+					
+					List<String> descriptionAndScenarioTerms = new ArrayList<String>();
+					IndexableField[] scenarioFields = doc.getFields("scenario");
+					for (int ii=0; ii<scenarioFields.length; ii++) {
+						for (String term: scenarioFields[ii].stringValue().split(" ")) {
+							descriptionAndScenarioTerms.add(term);
+						}
+					}
+					
+					IndexableField descriptionField = doc.getField("description");
+					if (descriptionField != null) {
+						for (String term: descriptionField.stringValue().split(" ")) {
+							descriptionAndScenarioTerms.add(term);
+						}
+					}
+					
+					for (String queryTerm: queryTerms) {
+						if (descriptionAndScenarioTerms.contains(queryTerm)) {
+							matchScore += Collections.frequency(descriptionAndScenarioTerms, queryTerm);
+						}
+					}
+
+					// Create score entry and add to results list
+					OdpSearchResult entry = new OdpSearchResult(new OdpDetails(suggestedOdpUri),matchScore);
+					resultsList.add(entry);
+				}
+				catch (IOException ex) {
+					log.error(String.format("Unable to retrieve document %s from Lucene index. Error message: %s", i, ex.getMessage()));
+				}
+			}
+			return resultsList;
+		}
+	}
+	
 	
 	/**
 	 * Matches query term synonyms and hypernyms against pattern term synonyms from Lucene index "synonyms" field.
@@ -524,9 +572,6 @@ public class CompositeSearch {
 	 */
 	public OdpSearchResult[] runSearch(String queryString, OdpSearchFilterConfiguration filterConfiguration) {
 		
-		// TODO: Add search over the description field also.
-		// TODO: Add search over the classes/properties field also.
-		
 		// Normalise query into a term array
 		String[] queryTerms = prepareQueryString(queryString);
 		
@@ -541,8 +586,9 @@ public class CompositeSearch {
 		List<OdpSearchResult> SemanticVectorResults = SemanticVectorSearch(inputTermsEnriched);
 		List<OdpSearchResult> SynonymOverlapResults = SynonymOverlapSearch(inputTermsEnriched);
 		List<OdpSearchResult> CQEditDistanceResults = CQEditDistanceSearch(queryString);
+		List<OdpSearchResult> DescriptionAndScenarioOverlapResults = DescriptionAndScenarioOverlapSearch(queryTerms);
 		
-		List<OdpSearchResult> mergedResults = mergeAndSortResults(SemanticVectorResults,SynonymOverlapResults,CQEditDistanceResults);
+		List<OdpSearchResult> mergedResults = mergeAndSortResults(SemanticVectorResults,SynonymOverlapResults,CQEditDistanceResults,DescriptionAndScenarioOverlapResults);
 		List<OdpSearchResult> enrichedResults = enrichResults(mergedResults);
 		List<OdpSearchResult> filteredResults = filterResults(enrichedResults, filterConfiguration);
 		

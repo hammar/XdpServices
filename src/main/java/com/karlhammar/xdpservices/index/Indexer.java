@@ -44,6 +44,7 @@ import org.semanticweb.owlapi.model.OWLOntologyCreationException;
 import org.semanticweb.owlapi.model.OWLOntologyLoaderConfiguration;
 import org.semanticweb.owlapi.model.OWLOntologyManager;
 import org.springframework.util.StringUtils;
+import org.tartarus.snowball.ext.PorterStemmer;
 
 import pitt.search.semanticvectors.BuildIndex;
 
@@ -251,6 +252,14 @@ public class Indexer {
         	doc.add(descriptionField);
         }
         
+        // Add scenarios
+        if (odp.getScenarios() != null) {
+        	for (String scenario: odp.getScenarios()) {
+        		Field scenarioField = new TextField("scenario", scenario, Field.Store.YES);
+        		doc.add(scenarioField);
+        	}
+        }
+        
         // Add image
         if (odp.getImage() != null) {
         	Field imageField = new StringField("image", odp.getImage(), Field.Store.YES);
@@ -282,6 +291,11 @@ public class Indexer {
         if (odp.getCqs() != null) {
         	for (String cq: odp.getCqs()) {
         		allTermsMerged += cq + " ";
+        	}
+        }
+        if (odp.getScenarios() != null) {
+        	for (String scenario: odp.getScenarios()) {
+        		allTermsMerged += scenario + " ";
         	}
         }
         if (odp.getClasses() != null) {

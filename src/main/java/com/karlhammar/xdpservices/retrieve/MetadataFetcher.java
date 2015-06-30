@@ -161,6 +161,12 @@ public class MetadataFetcher {
 				odpImage = getOdpImageFromCsvLookup(odpUri);
 			}
 			
+			IndexableField[] scenarioFields = hit.getFields("scenario");
+			odpScenarios = new String[scenarioFields.length];
+			for (int i=0; i<scenarioFields.length; i++) {
+				odpScenarios[i] = scenarioFields[i].stringValue();
+			}
+			
 			IndexableField[] classesFields = hit.getFields("classes");
 			odpClasses = new String[classesFields.length];
 			for (int i=0; i<classesFields.length; i++) {
