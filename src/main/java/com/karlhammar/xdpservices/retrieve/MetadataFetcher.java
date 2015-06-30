@@ -1,9 +1,6 @@
 package com.karlhammar.xdpservices.retrieve;
 
-import java.io.File;
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
@@ -12,6 +9,7 @@ import java.util.List;
 import java.util.Properties;
 import java.util.Set;
 
+import org.apache.commons.io.IOUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.lucene.analysis.Analyzer;
@@ -79,9 +77,8 @@ public class MetadataFetcher {
 			
 			// Generate set of suitable ODP iris from category matching CSV file on disk
 			Set<String> matchingOdpIris = new HashSet<String>();
-			File odpCategoryMappingFile = new File(MetadataFetcher.class.getResource("odpCategoryMapping.csv").getFile());
-			List<String> lines = Files.readAllLines(odpCategoryMappingFile.toPath(), StandardCharsets.UTF_8);
-			for (String line: lines) {
+			final List<String> resourceLines = IOUtils.readLines(MetadataFetcher.class.getResourceAsStream("odpCategoryMapping.csv"));
+			for (final String line : resourceLines) {
 				String[] lineComponents = line.split(";");
 				String lineCategory = lineComponents[0];
 				String lineOdpIri = lineComponents[1];
@@ -109,6 +106,7 @@ public class MetadataFetcher {
 		}
 		catch (Exception e) {
 			log.error(String.format("Unable to retrieve ODP list for category %s: search failed with message: %s", category, e.getMessage()));
+			e.printStackTrace();
 			return null;
 		}
 	}
@@ -185,9 +183,8 @@ public class MetadataFetcher {
 	
 	public String getOdpImageFromCsvLookup(String odpIri) {
 		try {
-			File odpIllustrationMappingFile = new File(MetadataFetcher.class.getResource("odpIllustrationMapping.csv").getFile());
-			List<String> lines = Files.readAllLines(odpIllustrationMappingFile.toPath(), StandardCharsets.UTF_8);
-			for (String line: lines) {
+			final List<String> resourceLines = IOUtils.readLines(MetadataFetcher.class.getResourceAsStream("odpIllustrationMapping.csv"));
+			for (final String line : resourceLines) {
 				String[] lineComponents = line.split(";");
 				String lineIri = lineComponents[0];
 				String lineIllustrationIri = lineComponents[1];
@@ -204,9 +201,8 @@ public class MetadataFetcher {
 	
 	public String[] getOdpCategories() {
 		try {
-			File odpCategoriesFile = new File(MetadataFetcher.class.getResource("odpCategories.txt").getFile());
-			List<String> odpCategories = Files.readAllLines(odpCategoriesFile.toPath(), StandardCharsets.UTF_8);
-			return odpCategories.toArray(new String[odpCategories.size()]);
+			final List<String> resourceLines = IOUtils.readLines(MetadataFetcher.class.getResourceAsStream("odpCategories.txt"));
+			return resourceLines.toArray(new String[resourceLines.size()]);
 		}
 		catch (Exception e) {
 			return new String[]{String.format("Failed to get ODP categories. Exception thrown: ", e.toString())};
