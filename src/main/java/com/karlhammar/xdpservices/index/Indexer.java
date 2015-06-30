@@ -44,7 +44,6 @@ import org.semanticweb.owlapi.model.OWLOntologyCreationException;
 import org.semanticweb.owlapi.model.OWLOntologyLoaderConfiguration;
 import org.semanticweb.owlapi.model.OWLOntologyManager;
 import org.springframework.util.StringUtils;
-import org.tartarus.snowball.ext.PorterStemmer;
 
 import pitt.search.semanticvectors.BuildIndex;
 
@@ -452,7 +451,15 @@ public class Indexer {
         	if (annotation.getProperty().getIRI().equals(IRI.create("http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#coversRequirements")) &&
         			annotation.getValue() instanceof OWLLiteral) {
         		OWLLiteral val = (OWLLiteral) annotation.getValue();
-        		odpCqsList.add(val.getLiteral());
+        		String cqValue = val.getLiteral();
+        		for (String cqPart: cqValue.split("\\?")) {
+        			cqPart = cqPart.trim();
+        			if (cqPart.length() > 1) {
+	        			String cqPartCapitalized = cqPart.substring(0,1).toUpperCase() + cqPart.substring(1);
+	        			odpCqsList.add(String.format("%s?",cqPartCapitalized));
+        			}
+        			
+        		}
         	}
         	if (annotation.getProperty().getIRI().equals(IRI.create("http://xd-protege.com/schemas/cpas-ext.owl#hasImage")) &&
         			annotation.getValue() instanceof OWLLiteral) {
@@ -462,7 +469,11 @@ public class Indexer {
         	if (annotation.getProperty().getIRI().equals(IRI.create("http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#scenarios")) &&
         			annotation.getValue() instanceof OWLLiteral) {
         		OWLLiteral val = (OWLLiteral) annotation.getValue();
-        		odpScenariosList.add(val.getLiteral());
+        		String scenario = val.getLiteral();
+        		if (scenario.length() > 1) {
+        			scenario = scenario.substring(0,1).toUpperCase() + scenario.substring(1);
+        		}
+        		odpScenariosList.add(scenario);
         	}
         }
         
