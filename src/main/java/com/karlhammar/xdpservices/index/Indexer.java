@@ -1,15 +1,13 @@
 package com.karlhammar.xdpservices.index;
 
-import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
+import java.io.StringReader;
 import java.net.URL;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
-import java.util.HashSet;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Properties;
 import java.util.Set;
@@ -17,7 +15,10 @@ import java.util.Set;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.lucene.analysis.Analyzer;
+import org.apache.lucene.analysis.TokenStream;
+import org.apache.lucene.analysis.core.WhitespaceAnalyzer;
 import org.apache.lucene.analysis.standard.StandardAnalyzer;
+import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.StringField;
@@ -66,57 +67,30 @@ public class Indexer {
 
 	// Singleton properties.
 	private static Log log;
-	private static Set<String> stopwords;
 	private static Properties searchProperties;
 	private static IndexWriter writer;
 	private static IDictionary wordnetDictionary;
-	private static Boolean useWordNet;
-
+	
 	/**
 	 * Private singleton constructor setting up all the statics that are needed. 
 	 */
 	private Indexer() {
 		log = LogFactory.getLog(Indexer.class);
 		loadSearchProperties();
-		stopwords = loadStopWords();
 		loadWordNetDictionary();
-		//loadLuceneReader();
 	}
-	
-	
+
 	private static void loadWordNetDictionary() {
 		try {
 			String WnDictPath = searchProperties.getProperty("wordNetPath");
 			URL url = new URL("file", null, WnDictPath);
 			wordnetDictionary = new Dictionary(url);
 			wordnetDictionary.open();
-			useWordNet = true;
 		}
 		catch (IOException ex) {
-			log.error(String.format("Unable to load WordNet. WordNet-based index synonym/hypernym enrichment disabled. Error message: %s", ex.getMessage()));
-			useWordNet = false;
+			log.error(String.format("Unable to load WordNet. Error message: %s", ex.getMessage()));
 		}
 	}
-	
-	
-	private static Set<String> loadStopWords() {
-		try {
-			InputStream is = CompositeSearch.class.getResourceAsStream("stopwords.txt");
-			BufferedReader stopbr = new BufferedReader(new InputStreamReader(is, "UTF-8"));
-			stopwords = new HashSet<String>();
-			String stopLine = null;
-			while ((stopLine = stopbr.readLine()) != null) {
-				stopwords.add(stopLine);
-			}
-			stopbr.close();
-			return stopwords;
-		}
-		catch (IOException e) {
-			log.error("Unable to load stop word set; using empty stop word set.");
-			return new HashSet<String>();
-		}
-	}
-	
 	
 	/**
 	 * Load search property file (should this functionality be in a utility class?)
@@ -179,12 +153,10 @@ public class Indexer {
 				String vectorsStatus = buildVectorsIndex();
 				log.info(vectorsStatus);
 				
-				return String.format("%s %s",luceneStatus,vectorsStatus);
+				return String.format("%s %s",luceneStatus, vectorsStatus);
 			} 
 			catch (IOException ex) {
-				log.fatal(String
-						.format("IO operations on index path %s failed. Error message: %s",
-								ex.getMessage()));
+				log.fatal(String.format("IO operations on index path %s failed. Error message: %s", ex.getMessage()));
 				return "Index rebuild failed";
 			}
 		}
@@ -223,6 +195,9 @@ public class Indexer {
 		// Make a new, empty Lucene document
         Document doc = new Document();
         
+        // List of all terms, field to be added
+        List<String> allTerms = new ArrayList<String>();
+        
         // Store path of actual building block
         Field pathField = new StringField("path", odpOnDisk.getCanonicalPath(), Field.Store.YES);
         doc.add(pathField);
@@ -233,22 +208,27 @@ public class Indexer {
         
         // Add name
         if (odp.getName() != null) {
-	        Field nameField = new StringField("name", odp.getName(), Field.Store.YES);
+        	String odpName = odp.getName();
+	        Field nameField = new StringField("name", odpName, Field.Store.YES);
 	        doc.add(nameField);
+	        allTerms.add(odpName);
         }
-        
+
         // Add CQ:s
         if (odp.getCqs() != null) {
 	        for (String cq: odp.getCqs()) {
-	        	Field cqField = new StringField("cqs", cq, Field.Store.YES);
+	        	Field cqField = new TextField("cqs", cq, Field.Store.YES);
 	        	doc.add(cqField);
 	        }
+	        allTerms.addAll(Arrays.asList(odp.getCqs()));
         }
         
         // Add description
         if (odp.getDescription() != null) {
-        	Field descriptionField = new TextField("description", odp.getDescription(), Field.Store.YES);
+        	String odpDescription = odp.getDescription();
+        	Field descriptionField = new TextField("description", odpDescription, Field.Store.YES);
         	doc.add(descriptionField);
+        	allTerms.add(odpDescription);
         }
         
         // Add scenarios
@@ -257,6 +237,7 @@ public class Indexer {
         		Field scenarioField = new TextField("scenario", scenario, Field.Store.YES);
         		doc.add(scenarioField);
         	}
+        	allTerms.addAll(Arrays.asList(odp.getScenarios()));
         }
         
         // Add image
@@ -271,67 +252,41 @@ public class Indexer {
 	        	Field classesField = new TextField("classes", aClass, Field.Store.YES);
 	        	doc.add(classesField);
 	        }
+	        allTerms.addAll(Arrays.asList(odp.getClasses()));
         }
         
         // Add properties
         if (odp.getProperties() != null) {
 	        for (String aProperty: odp.getProperties()) {
-	        	Field propertiesField = new StringField("properties", aProperty, Field.Store.YES);
+	        	Field propertiesField = new TextField("properties", aProperty, Field.Store.YES);
 	        	doc.add(propertiesField);
 	        }
+	        allTerms.addAll(Arrays.asList(odp.getProperties()));
         }
         
-        // Add "all terms" catch-all field
-        // Merge all terms
-        String allTermsMerged = "";
-        if (odp.getDescription() != null) {
-        	allTermsMerged += odp.getDescription() + " ";
-        }
-        if (odp.getCqs() != null) {
-        	for (String cq: odp.getCqs()) {
-        		allTermsMerged += cq + " ";
-        	}
-        }
-        if (odp.getScenarios() != null) {
-        	for (String scenario: odp.getScenarios()) {
-        		allTermsMerged += scenario + " ";
-        	}
-        }
-        if (odp.getClasses() != null) {
-        	allTermsMerged += StringUtils.arrayToDelimitedString(odp.getClasses(), " ") + " ";
-        }
-        if (odp.getProperties() != null) {
-        	allTermsMerged += StringUtils.arrayToDelimitedString(odp.getProperties(), " ") + " ";
-        }
-        
-        // Junk character and stop-word removal
-        String allTerms = "";
-        for (String s: allTermsMerged.split(" ")) {
-        	s = s.replaceAll("[^A-Za-z0-9 ]", "");
-        	if (!stopwords.contains(s) && !s.equalsIgnoreCase("")) {
-        		allTerms += (s + " ");
-        	}
-        }
-        Field allTermsField = new TextField("allterms", allTerms, Field.Store.NO);
-        doc.add(allTermsField);
-        
-        // If WordNet is enabled: find synonyms for each ODP word in WordNet 
-        // and add to index as one space-delimited string of synonym terms.
-        if (useWordNet) {
-        	String synonyms = "";
-        	for (String odpWord: allTerms.split(" ")) {
-        		IIndexWord idxWord = wordnetDictionary.getIndexWord(odpWord, POS.NOUN);
-        		if (idxWord != null) {
-        			IWordID wordID = idxWord.getWordIDs().get(0);
-        			IWord word = wordnetDictionary.getWord(wordID);
-        			ISynset synset = word.getSynset();
-        			for (IWord w: synset.getWords()) {
-        				synonyms += " " + w.getLemma();
-        			}
-        		}
-        	}
-        	doc.add(new TextField("synonyms", synonyms, Field.Store.YES));
-        }
+        // Tokenize all terms, clean out whitespace, and find synonyms
+        String allTermsConcatenated = StringUtils.collectionToDelimitedString(allTerms, " ");
+        List<String> allTermsCleaned = new ArrayList<String>();
+        List<String> synonymsList = new ArrayList<String>();
+    	Analyzer analyzer = new WhitespaceAnalyzer();
+    	TokenStream tokenStream = analyzer.tokenStream(null, new StringReader(allTermsConcatenated));
+    	tokenStream.reset();
+    	while(tokenStream.incrementToken()) {
+    		// Get word (token) without whitespace
+    		String token = tokenStream.getAttribute(CharTermAttribute.class).toString();
+    		allTermsCleaned.add(token);
+    		
+            // Find synonyms for each word in WordNet
+    		synonymsList.add(token);
+    		synonymsList.addAll(getSynonyms(token));
+    	}
+    	analyzer.close();
+
+        // Add all terms and synonyms to index
+        String allTermsCleanedConcatenated = StringUtils.collectionToDelimitedString(allTermsCleaned, " ");
+        doc.add(new TextField("allterms", allTermsCleanedConcatenated, Field.Store.YES));
+        String synonyms = StringUtils.collectionToDelimitedString(synonymsList, " ");
+        doc.add(new TextField("synonyms", synonyms, Field.Store.YES));
         
         // Write or update index
         if (writer.getConfig().getOpenMode() == OpenMode.CREATE) {
@@ -346,6 +301,20 @@ public class Indexer {
         }
 	}
 	
+	
+	public static List<String> getSynonyms(String inputWord) {
+		List<String> synonyms = new ArrayList<String>();
+		IIndexWord idxWord = wordnetDictionary.getIndexWord(inputWord, POS.NOUN);
+		if (idxWord != null) {
+			IWordID wordID = idxWord.getWordIDs().get(0);
+			IWord word = wordnetDictionary.getWord(wordID);
+			ISynset synset = word.getSynset();
+			for (IWord w: synset.getWords()) {
+				synonyms.add(w.getLemma());
+			}
+		}
+		return synonyms;
+	}
 	
 	private static String getLabel(OWLEntity entity, OWLOntology ontology) {
 		Set<OWLAnnotation> annotations = entity.getAnnotations(ontology);
