@@ -328,11 +328,11 @@ public class CompositeSearch {
 		// Execute searches across all search engine methods
 		List<OdpSearchResult> SemanticVectorResults = SemanticVectorSearch(queryTerms);
 		List<OdpSearchResult> LuceneResults = LuceneSearch(normalizedQueryString);
-		List<OdpSearchResult> SynonymSearchResults = SynonymSearch(normalizedQueryString);
+		// Deactivated due to poor results
+		// List<OdpSearchResult> SynonymSearchResults = SynonymSearch(normalizedQueryString);
 		
 		// Merge, enrich, and filter results
-		List<OdpSearchResult> mergedResults = mergeAndSortResults(SemanticVectorResults,LuceneResults, SynonymSearchResults);
-		//List<OdpSearchResult> mergedResults = mergeAndSortResults(SynonymSearchResults);
+		List<OdpSearchResult> mergedResults = mergeAndSortResults(SemanticVectorResults,LuceneResults);
 		List<OdpSearchResult> enrichedResults = enrichResults(ReIndexTo10(mergedResults));
 		List<OdpSearchResult> filteredResults = filterResults(enrichedResults, filterConfiguration);
 		
@@ -347,6 +347,7 @@ public class CompositeSearch {
 	 * @param queryString
 	 * @return
 	 */
+	@SuppressWarnings("unused")
 	private List<OdpSearchResult> SynonymSearch(String queryString) {
 		List<OdpSearchResult> resultsList = new ArrayList<OdpSearchResult>();
 		if (!useLucene) {
