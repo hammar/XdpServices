@@ -13,7 +13,7 @@ apply plugin: 'java'
 apply plugin: 'eclipse'
 apply plugin: 'spring-boot'
 
-version = '0.1'
+version = '1.0'
 jar {
 	manifest {
 		attributes	'Implementation-Title': 'XdpServices',
