@@ -1,4 +1,4 @@
-package com.karlhammar.xdpservices.index;
+package com.karlhammar.xdpservices.deprecated.index;
 
 import java.io.File;
 import java.io.IOException;
@@ -49,7 +49,8 @@ import org.springframework.util.StringUtils;
 import pitt.search.semanticvectors.BuildIndex;
 
 import com.google.common.base.CaseFormat;
-import com.karlhammar.xdpservices.search.CompositeSearch;
+import com.karlhammar.xdpservices.data.CodpDetails;
+import com.karlhammar.xdpservices.deprecated.search.CompositeSearch;
 
 import edu.mit.jwi.Dictionary;
 import edu.mit.jwi.IDictionary;
@@ -58,7 +59,6 @@ import edu.mit.jwi.item.ISynset;
 import edu.mit.jwi.item.IWord;
 import edu.mit.jwi.item.IWordID;
 import edu.mit.jwi.item.POS;
-import edu.stanford.bmir.protege.web.shared.xd.OdpDetails;
 
 public class Indexer {
 
@@ -137,7 +137,7 @@ public class Indexer {
 				for (int i = 0; i < files.length; i++) {
 					File candidateOdpFile = new File(odpRepository, files[i]);
 					if (!candidateOdpFile.isHidden() && !candidateOdpFile.isDirectory()) {
-						OdpDetails odp = parseOdp(candidateOdpFile);
+						CodpDetails odp = parseOdp(candidateOdpFile);
 						if (odp != null) {
 							indexOdp(odp, candidateOdpFile);
 						}
@@ -188,7 +188,7 @@ public class Indexer {
 	 * @param odpFile File to add to index.
 	 * @throws IOException 
 	 */
-	private static void indexOdp(OdpDetails odp, File odpOnDisk) throws IOException {
+	private static void indexOdp(CodpDetails odp, File odpOnDisk) throws IOException {
 		
 		log.info(String.format("Indexing: %s", odp.getUri()));
 		
@@ -203,7 +203,7 @@ public class Indexer {
         doc.add(pathField);
         
         // Add URI 
-        Field uriField = new StringField("uri", odp.getUri(), Field.Store.YES);
+        Field uriField = new StringField("uri", odp.getUri().toString(), Field.Store.YES);
         doc.add(uriField);
         
         // Add name
@@ -220,12 +220,12 @@ public class Indexer {
 	        	Field cqField = new TextField("cqs", cq, Field.Store.YES);
 	        	doc.add(cqField);
 	        }
-	        allTerms.addAll(Arrays.asList(odp.getCqs()));
+	        allTerms.addAll(odp.getCqs());
         }
         
         // Add description
         if (odp.getDescription() != null) {
-        	String odpDescription = odp.getDescription();
+        	String odpDescription = odp.getDescription().get();
         	Field descriptionField = new TextField("description", odpDescription, Field.Store.YES);
         	doc.add(descriptionField);
         	allTerms.add(odpDescription);
@@ -237,32 +237,33 @@ public class Indexer {
         		Field scenarioField = new TextField("scenario", scenario, Field.Store.YES);
         		doc.add(scenarioField);
         	}
-        	allTerms.addAll(Arrays.asList(odp.getScenarios()));
+        	allTerms.addAll(odp.getScenarios());
         }
         
         // Add image
-        if (odp.getImage() != null) {
-        	Field imageField = new StringField("image", odp.getImage(), Field.Store.YES);
+        if (odp.getImageIri().isPresent()) {
+        	Field imageField = new StringField("image", odp.getImageIri().get(), Field.Store.YES);
         	doc.add(imageField);
         }
 
         // Add classes
+        /*
         if (odp.getClass() != null) {
 	        for (String aClass: odp.getClasses()) {
 	        	Field classesField = new TextField("classes", aClass, Field.Store.YES);
 	        	doc.add(classesField);
 	        }
 	        allTerms.addAll(Arrays.asList(odp.getClasses()));
-        }
+        }*/
         
         // Add properties
-        if (odp.getProperties() != null) {
+        /*if (odp.getProperties() != null) {
 	        for (String aProperty: odp.getProperties()) {
 	        	Field propertiesField = new TextField("properties", aProperty, Field.Store.YES);
 	        	doc.add(propertiesField);
 	        }
 	        allTerms.addAll(Arrays.asList(odp.getProperties()));
-        }
+        }*/
         
         // Tokenize all terms, clean out whitespace, and find synonyms
         String allTermsConcatenated = StringUtils.collectionToDelimitedString(allTerms, " ");
@@ -297,7 +298,7 @@ public class Indexer {
             // Existing index (an old copy of this document may have been indexed) so 
             // we use updateDocument instead to replace the old one matching the exact 
             // uri, if present:
-            writer.updateDocument(new Term("uri", odp.getUri()), doc);
+            writer.updateDocument(new Term("uri", odp.getUri().toString()), doc);
         }
 	}
 	
@@ -342,7 +343,7 @@ public class Indexer {
 	 * @param odpFile File to parse
 	 * @return An OdpDetails object or null if parsing failed.
 	 */
-	private static OdpDetails parseOdp(File odpFile) {
+	private static CodpDetails parseOdp(File odpFile) {
 		
 		// Fields to be filled by subsequent parsing.
 		String odpUri = null;
@@ -510,7 +511,8 @@ public class Indexer {
         odpClasses = odpClassesList.toArray(new String[odpClassesList.size()]);
         odpProperties = odpPropertiesList.toArray(new String[odpPropertiesList.size()]);
         
-        return new OdpDetails(odpUri,odpName,odpDescription,odpDomains,odpCqs,odpImage,odpScenarios,odpClasses,odpProperties);
+        // TODO FIX
+        return null;//new CodpDetails(odpUri,odpName,odpDescription,odpDomains,odpCqs,odpImage,odpScenarios);
 	}
 	
 }

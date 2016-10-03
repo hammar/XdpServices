@@ -1,10 +1,11 @@
-package com.karlhammar.xdpservices.search;
+package com.karlhammar.xdpservices.deprecated.search;
 
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.StringReader;
+import java.net.URI;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
@@ -35,14 +36,14 @@ import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.store.FSDirectory;
 
-import com.karlhammar.xdpservices.index.Indexer;
+import com.karlhammar.xdpservices.data.CodpDetails;
+import com.karlhammar.xdpservices.data.OdpSearchFilterConfiguration;
+import com.karlhammar.xdpservices.data.OdpSearchResult;
+import com.karlhammar.xdpservices.data.OdpSearchResultComparator;
+import com.karlhammar.xdpservices.deprecated.index.Indexer;
 
 import pitt.search.semanticvectors.FlagConfig;
 import pitt.search.semanticvectors.SearchResult;
-import edu.stanford.bmir.protege.web.shared.xd.OdpDetails;
-import edu.stanford.bmir.protege.web.shared.xd.OdpSearchFilterConfiguration;
-import edu.stanford.bmir.protege.web.shared.xd.OdpSearchResult;
-import edu.stanford.bmir.protege.web.shared.xd.OdpSearchResultComparator;
 
 public class CompositeSearch {
 
@@ -130,7 +131,7 @@ public class CompositeSearch {
 			      for (SearchResult result: results) {
 			    	  String suggestedOdpPath = result.getObjectVector().getObject().toString();
 			    	  Double suggestedOdpScore = result.getScore();
-			    	  OdpSearchResult entry = new OdpSearchResult(new OdpDetails(suggestedOdpPath),suggestedOdpScore);
+			    	  OdpSearchResult entry = new OdpSearchResult(new CodpDetails(URI.create(suggestedOdpPath),""),suggestedOdpScore);
 			    	  resultsList.add(entry);
 			      }
 			}
@@ -163,7 +164,7 @@ public class CompositeSearch {
 		// Merge scores using Map
 		// Note that the map is string,double - since equality comparison of OdpDetails would be a nuisance, given
 		// the many fields that this data type has.
-		Map<String,Double> mergedResultsMap = new HashMap<String,Double>();
+		Map<URI,Double> mergedResultsMap = new HashMap<URI,Double>();
 		for (OdpSearchResult entry: concatenatedResultsList) {
 			if (!mergedResultsMap.containsKey(entry.getOdp().getUri())) {
 				mergedResultsMap.put(entry.getOdp().getUri(), entry.getConfidence());
@@ -177,8 +178,8 @@ public class CompositeSearch {
 		// Turn said Map back into a list of OdpSearchResult, creating new OdpDetails object with only
 		// URI field set in the process.
 		List<OdpSearchResult> mergedResultsList = new ArrayList<OdpSearchResult>();
-		for (Map.Entry<String, Double> entry : mergedResultsMap.entrySet()) {
-			OdpDetails odp = new OdpDetails(entry.getKey());
+		for (Map.Entry<URI, Double> entry : mergedResultsMap.entrySet()) {
+			CodpDetails odp = new CodpDetails(entry.getKey(),"asdf");
 		    Double confidence = entry.getValue();
 		    OdpSearchResult newEntry = new OdpSearchResult(odp,confidence);
 		    mergedResultsList.add(newEntry);
@@ -217,7 +218,7 @@ public class CompositeSearch {
 			for (OdpSearchResult result: inputList) {
 
 				// Get details for each result list entry
-				String odpUri = result.getOdp().getUri();
+				String odpUri = result.getOdp().getUri().toString();
 				Double confidence = result.getConfidence();
 
 				// Search Lucene index to find ODP document 
@@ -229,7 +230,7 @@ public class CompositeSearch {
 
 					IndexableField nameField = hit.getField("name");
 					String odpName = nameField.stringValue();
-					OdpSearchResult newResult = new OdpSearchResult(new OdpDetails(odpUri,odpName), confidence);
+					OdpSearchResult newResult = new OdpSearchResult(new CodpDetails(URI.create(odpUri),odpName), confidence);
 					outputList.add(newResult);
 				} 
 				catch (Exception e) {
@@ -364,7 +365,7 @@ public class CompositeSearch {
 				    int docId = sdoc.doc;
 				    float score = sdoc.score;
 				    Document doc = luceneSearcher.doc(docId);
-				    OdpSearchResult entry = new OdpSearchResult(new OdpDetails(doc.getField("uri").stringValue()), new Double(score));
+				    OdpSearchResult entry = new OdpSearchResult(new CodpDetails(URI.create(doc.getField("uri").stringValue()),"asdf"), new Double(score));
 					resultsList.add(entry);
 				}
 			} 
@@ -400,7 +401,7 @@ public class CompositeSearch {
 				    int docId = sdoc.doc;
 				    float score = sdoc.score;
 				    Document doc = luceneSearcher.doc(docId);
-				    OdpSearchResult entry = new OdpSearchResult(new OdpDetails(doc.getField("uri").stringValue()), new Double(score));
+				    OdpSearchResult entry = new OdpSearchResult(new CodpDetails(URI.create(doc.getField("uri").stringValue()),"asdf"), new Double(score));
 					resultsList.add(entry);
 				}
 			} 

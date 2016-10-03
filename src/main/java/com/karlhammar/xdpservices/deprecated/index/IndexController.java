@@ -1,4 +1,4 @@
-package com.karlhammar.xdpservices.index;
+package com.karlhammar.xdpservices.deprecated.index;
 
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;

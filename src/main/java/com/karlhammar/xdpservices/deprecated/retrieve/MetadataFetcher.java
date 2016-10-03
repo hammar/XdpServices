@@ -1,6 +1,7 @@
-package com.karlhammar.xdpservices.retrieve;
+package com.karlhammar.xdpservices.deprecated.retrieve;
 
 import java.io.IOException;
+import java.net.URI;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
@@ -24,9 +25,10 @@ import org.apache.lucene.search.Query;
 import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.store.FSDirectory;
 
-import com.karlhammar.xdpservices.search.CompositeSearch;
+import com.karlhammar.xdpservices.data.CodpDetails;
+import com.karlhammar.xdpservices.deprecated.search.CompositeSearch;
 
-import edu.stanford.bmir.protege.web.shared.xd.OdpDetails;
+//import edu.stanford.bmir.protege.web.shared.xd.OdpDetails;
 
 public class MetadataFetcher {
 
@@ -72,7 +74,7 @@ public class MetadataFetcher {
 		}
 	}
 	
-	public OdpDetails[] getOdpsByCategory(String category) {
+	public CodpDetails[] getOdpsByCategory(String category) {
 		try {
 			
 			// Generate set of suitable ODP iris from category matching CSV file on disk
@@ -90,18 +92,19 @@ public class MetadataFetcher {
 			// 
 			
 			// Iterate over index and find documents with IRIs that are in the set of suitable ODPs
-			List<OdpDetails> odps = new ArrayList<OdpDetails>();
+			List<CodpDetails> odps = new ArrayList<CodpDetails>();
 			for (int i=0; i<luceneReader.maxDoc(); i++) {
 				Document doc = luceneReader.document(i);
 				String odpIri = doc.get("uri");
 				// If category is "Any", return all ODPs. 
 				// If not, only return if ODP IRI is in matching set of IRIs
 				if (category.equalsIgnoreCase("Any") || matchingOdpIris.contains(odpIri)) {
-					OdpDetails odp = new OdpDetails(doc.get("uri"),doc.get("name"));
+					URI uri = URI.create(doc.get("uri"));
+					CodpDetails odp = new CodpDetails(uri,doc.get("name"));
 					odps.add(odp);
 				}
 			}
-			return odps.toArray(new OdpDetails[odps.size()]);
+			return odps.toArray(new CodpDetails[odps.size()]);
 			
 		}
 		catch (Exception e) {
@@ -116,7 +119,7 @@ public class MetadataFetcher {
 	 * @param odpUri URI of ODP to enrich.
 	 * @return An OdpDetails object with all the fields that are stored in the index set.
 	 */
-	public OdpDetails getOdpDetails(String odpUri) {
+	public CodpDetails getOdpDetails(String odpUri) {
 		Analyzer analyzer = new WhitespaceAnalyzer();
 		QueryParser queryParser = new QueryParser("uri", analyzer);
 
@@ -178,8 +181,9 @@ public class MetadataFetcher {
 			for (int i=0; i<propertiesFields.length; i++) {
 				odpProperties[i] = propertiesFields[i].stringValue();
 			}
-			
-			return new OdpDetails(odpUri,odpName, odpDescription, odpDomains, odpCqs, odpImage, odpScenarios, odpClasses, odpProperties);
+			// TODO FIX
+			return null;
+			//return new CodpDetails(odpUri,odpName, odpDescription, odpDomains, odpCqs, odpImage, odpScenarios, odpClasses, odpProperties);
 		} 
 		catch (Exception e) {
 			log.error(String.format("Unable to enrich ODP %s: search failed with message: %s", odpUri, e.getMessage()));

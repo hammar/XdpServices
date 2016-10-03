@@ -1,4 +1,4 @@
-package com.karlhammar.xdpservices.retrieve;
+package com.karlhammar.xdpservices.deprecated.retrieve;
 
 import java.io.ByteArrayOutputStream;
 import java.io.File;
@@ -32,7 +32,7 @@ import org.semanticweb.owlapi.model.OWLOntologyLoaderConfiguration;
 import org.semanticweb.owlapi.model.OWLOntologyManager;
 import org.semanticweb.owlapi.model.OWLOntologyStorageException;
 
-import com.karlhammar.xdpservices.search.CompositeSearch;
+import com.karlhammar.xdpservices.deprecated.search.CompositeSearch;
 
 public class OdpFetcher {
 	
