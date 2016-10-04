@@ -1,16 +1,16 @@
 package com.karlhammar.xdpservices.data;
 
 import java.io.Serializable;
-import java.net.URI;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Optional;
+
+import com.google.common.base.Optional;
 
 public class CodpDetails implements Serializable {
 
 	private static final long serialVersionUID = -5187426776966355376L;
 
-	private URI uri;
+	private String iri;
 	private String name;
 	private String imageIri;
 	private String intent;
@@ -27,28 +27,28 @@ public class CodpDetails implements Serializable {
 	private CodpDetails() {
 	}
 	
-	public CodpDetails(URI uri, String name) {
-		this.uri = uri;
+	public CodpDetails(String iri, String name) {
+		this.iri = iri;
 		this.name = name;
 		this.domains = new ArrayList<String>();
 		this.scenarios = new ArrayList<String>();
 		this.cqs = new ArrayList<String>();
 	}
 	
-	public CodpDetails(URI uri, String name, String imageIri, String intent, String description, 
+	public CodpDetails(String iri, String name, String imageIri, String intent, String description, 
 			String consequences, List<String> domains, List<String> scenarios, List<String> cqs) {
-		this(uri,name);
+		this(iri,name);
 		this.imageIri = imageIri;
-		this.domains = domains;
 		this.intent = intent;
 		this.description = description;
 		this.consequences = consequences;
+		this.domains = domains;
 		this.scenarios = scenarios;
 		this.cqs = cqs;
 	}
 
-	public URI getUri() {
-		return uri;
+	public String getIri() {
+		return iri;
 	}
 
 	public String getName() {
@@ -56,19 +56,19 @@ public class CodpDetails implements Serializable {
 	}
 
 	public Optional<String> getImageIri() {
-		return Optional.ofNullable(imageIri);
+		return Optional.fromNullable(imageIri);
 	}
 
 	public Optional<String> getIntent() {
-		return Optional.ofNullable(intent);
+		return Optional.fromNullable(intent);
 	}
 
 	public Optional<String> getDescription() {
-		return Optional.ofNullable(description);
+		return Optional.fromNullable(description);
 	}
 
 	public Optional<String> getConsequences() {
-		return Optional.ofNullable(consequences);
+		return Optional.fromNullable(consequences);
 	}
 
 	public List<String> getDomains() {

@@ -1,10 +1,10 @@
 package com.karlhammar.xdpservices.deprecated.retrieve;
 
 import java.io.IOException;
-import java.net.URI;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Properties;
@@ -24,7 +24,6 @@ import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.store.FSDirectory;
-
 import com.karlhammar.xdpservices.data.CodpDetails;
 import com.karlhammar.xdpservices.deprecated.search.CompositeSearch;
 
@@ -99,8 +98,7 @@ public class MetadataFetcher {
 				// If category is "Any", return all ODPs. 
 				// If not, only return if ODP IRI is in matching set of IRIs
 				if (category.equalsIgnoreCase("Any") || matchingOdpIris.contains(odpIri)) {
-					URI uri = URI.create(doc.get("uri"));
-					CodpDetails odp = new CodpDetails(uri,doc.get("name"));
+					CodpDetails odp = new CodpDetails(doc.get("uri"),doc.get("name"));
 					odps.add(odp);
 				}
 			}
@@ -181,9 +179,10 @@ public class MetadataFetcher {
 			for (int i=0; i<propertiesFields.length; i++) {
 				odpProperties[i] = propertiesFields[i].stringValue();
 			}
-			// TODO FIX
-			return null;
-			//return new CodpDetails(odpUri,odpName, odpDescription, odpDomains, odpCqs, odpImage, odpScenarios, odpClasses, odpProperties);
+			return new CodpDetails(odpUri,odpName, odpImage, odpDescription, odpDescription, odpDescription,
+					Arrays.asList(odpScenarios),Arrays.asList(odpScenarios), Arrays.asList(odpCqs)); 
+					
+					
 		} 
 		catch (Exception e) {
 			log.error(String.format("Unable to enrich ODP %s: search failed with message: %s", odpUri, e.getMessage()));

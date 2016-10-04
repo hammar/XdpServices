@@ -190,7 +190,7 @@ public class Indexer {
 	 */
 	private static void indexOdp(CodpDetails odp, File odpOnDisk) throws IOException {
 		
-		log.info(String.format("Indexing: %s", odp.getUri()));
+		log.info(String.format("Indexing: %s", odp.getIri()));
 		
 		// Make a new, empty Lucene document
         Document doc = new Document();
@@ -203,7 +203,7 @@ public class Indexer {
         doc.add(pathField);
         
         // Add URI 
-        Field uriField = new StringField("uri", odp.getUri().toString(), Field.Store.YES);
+        Field uriField = new StringField("uri", odp.getIri().toString(), Field.Store.YES);
         doc.add(uriField);
         
         // Add name
@@ -298,7 +298,7 @@ public class Indexer {
             // Existing index (an old copy of this document may have been indexed) so 
             // we use updateDocument instead to replace the old one matching the exact 
             // uri, if present:
-            writer.updateDocument(new Term("uri", odp.getUri().toString()), doc);
+            writer.updateDocument(new Term("uri", odp.getIri().toString()), doc);
         }
 	}
 	

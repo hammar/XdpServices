@@ -59,6 +59,6 @@ public class OdpSearchResult implements Serializable {
 
 	@Override
 	public String toString() {
-		return "OdpSearchResult [odp=" + odp.getUri().toString() + ", confidence=" + confidence + "]";
+		return "OdpSearchResult [odp=" + odp.getIri().toString() + ", confidence=" + confidence + "]";
 	}
 }
