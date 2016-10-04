@@ -48,7 +48,7 @@ public class CompositeSearch {
 	public final static CompositeSearch INSTANCE = new CompositeSearch();
 
 	private static Log log;
-	private static Set<String> stopwords;
+	//private static Set<String> stopwords;
 	private static IndexReader luceneReader;
 	private static IndexSearcher luceneSearcher;
 	private static Boolean useLucene;
@@ -56,13 +56,10 @@ public class CompositeSearch {
 	
 	// Private constructor to defeat external instantiation (access via INSTANCE singleton)
 	private CompositeSearch() {
+		// Instantiate logging
 		log = LogFactory.getLog(CompositeSearch.class);
-		loadSearchProperties();
-		stopwords = loadStopWords();
-		loadLuceneReader();
-	}
-	
-	private static void loadSearchProperties() {
+		
+		// Load search properties
 		try {
 			searchProperties = new Properties();
 			searchProperties.load(CompositeSearch.class.getResourceAsStream("search.properties"));
@@ -70,9 +67,8 @@ public class CompositeSearch {
 		catch (IOException e) {
 			log.fatal(String.format("Unable to load search properties. Error message: %s", e.getMessage()));
 		}
-	}
-	
-	private static void loadLuceneReader() {
+		
+		// Load Lucene reader
 		try {
 			Path luceneIndexPath = Paths.get(searchProperties.getProperty("luceneIndexPath"));
 			luceneReader = DirectoryReader.open(FSDirectory.open(luceneIndexPath));
@@ -83,9 +79,21 @@ public class CompositeSearch {
 			log.error(String.format("Unable to load Lucene index reader. Lucene support disabled. Error message: %s", e.getMessage()));
 			useLucene = false;
 		}
+		//loadSearchProperties();
+		//stopwords = loadStopWords();
+		//loadLuceneReader();
+		
 	}
 	
-	private static Set<String> loadStopWords() {
+	/*private static void loadSearchProperties() {
+
+	}*/
+	
+	/*private static void loadLuceneReader() {
+		
+	}*/
+	
+	/*private static Set<String> loadStopWords() {
 		try {
 			InputStream is = CompositeSearch.class.getResourceAsStream("stopwords.txt");
 			BufferedReader stopbr = new BufferedReader(new InputStreamReader(is, "UTF-8"));
@@ -101,7 +109,7 @@ public class CompositeSearch {
 			log.error("Unable to load stop word set; using empty stop word set.");
 			return new HashSet<String>();
 		}
-	}
+	}*/
 	
 	/**
 	 * Execute Semantic Vectors Search (https://code.google.com/p/semanticvectors/).
@@ -118,7 +126,7 @@ public class CompositeSearch {
 			String queryVectorPath = String.format("%s/termvectors.bin", vectorBasePath);
 			String searchVectorPath = String.format("%s/docvectors.bin", vectorBasePath);
 			//
-			String[] configurationArray = {"-contentsfields","allterms","-docidfield", "uri","-queryvectorfile",queryVectorPath,"-searchvectorfile", searchVectorPath, "-searchtype", "SUM", "-numsearchresults", "25"};
+			String[] configurationArray = {"-contentsfields","allterms","-docidfield", "iri","-queryvectorfile",queryVectorPath,"-searchvectorfile", searchVectorPath, "-searchtype", "SUM", "-numsearchresults", "25"};
 			String[] queryTermsArray = queryTerms.toArray(new String[queryTerms.size()]);
 			String[] queryArray = ArrayUtils.addAll(configurationArray, queryTermsArray);
 			
@@ -177,7 +185,8 @@ public class CompositeSearch {
 		// URI field set in the process.
 		List<OdpSearchResult> mergedResultsList = new ArrayList<OdpSearchResult>();
 		for (Map.Entry<String, Double> entry : mergedResultsMap.entrySet()) {
-			CodpDetails odp = new CodpDetails(entry.getKey(),"asdf");
+			// TODO: fix below, use of empty string in constructor is UGLY
+			CodpDetails odp = new CodpDetails(entry.getKey(),"");
 		    Double confidence = entry.getValue();
 		    OdpSearchResult newEntry = new OdpSearchResult(odp,confidence);
 		    mergedResultsList.add(newEntry);
@@ -210,7 +219,7 @@ public class CompositeSearch {
 			// Set up stuff that will be needed
 			List<OdpSearchResult> outputList = new ArrayList<OdpSearchResult>();
 			Analyzer analyzer = new WhitespaceAnalyzer();
-			QueryParser queryParser = new QueryParser("uri", analyzer);
+			QueryParser queryParser = new QueryParser("iri", analyzer);
 
 			// Iterate over input list
 			for (OdpSearchResult result: inputList) {
@@ -363,7 +372,7 @@ public class CompositeSearch {
 				    int docId = sdoc.doc;
 				    float score = sdoc.score;
 				    Document doc = luceneSearcher.doc(docId);
-				    OdpSearchResult entry = new OdpSearchResult(new CodpDetails(doc.getField("uri").stringValue(),"asdf"), new Double(score));
+				    OdpSearchResult entry = new OdpSearchResult(new CodpDetails(doc.getField("iri").stringValue(),doc.getField("name").toString()), new Double(score));
 					resultsList.add(entry);
 				}
 			} 
@@ -399,7 +408,7 @@ public class CompositeSearch {
 				    int docId = sdoc.doc;
 				    float score = sdoc.score;
 				    Document doc = luceneSearcher.doc(docId);
-				    OdpSearchResult entry = new OdpSearchResult(new CodpDetails(doc.getField("uri").stringValue(),"asdf"), new Double(score));
+				    OdpSearchResult entry = new OdpSearchResult(new CodpDetails(doc.getField("iri").stringValue(),doc.getField("name").stringValue()), new Double(score));
 					resultsList.add(entry);
 				}
 			} 
