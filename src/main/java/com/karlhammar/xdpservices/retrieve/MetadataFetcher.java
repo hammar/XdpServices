@@ -121,65 +121,62 @@ public class MetadataFetcher {
 			Query query = queryParser.parse(String.format("\"%s\"", odpIri));
 			ScoreDoc[] hits = luceneSearcher.search(query, null, 1).scoreDocs;
 			Document hit = luceneSearcher.doc(hits[0].doc);
-
-			// TODO: Implement the below based on new Lucene index structure
-			return null;
-			/*
+			
 			// All initial fields
 			String odpName = null;
-			String odpDescription = null;
-			String[] odpDomains = null;
-			String[] odpCqs = null;
 			String odpImage = null;
-			String[] odpScenarios = null;
-			String[] odpClasses = null;
-			String[] odpProperties = null;
-			
+			String odpIntent = null;
+			String odpDescription = null;
+			String odpConsequences = null;
+			List<String> odpDomains = new ArrayList<String>();
+			List<String> odpScenarios = new ArrayList<String>();
+			List<String> odpCqs = new ArrayList<String>();
+
+			// Get each field from Lucene index
 			IndexableField nameField = hit.getField("name");
-			if (nameField != null) {
-				odpName = nameField.stringValue();
-			}
-			
-			IndexableField descriptionField = hit.getField("description");
-			if (descriptionField != null) {
-				odpDescription = descriptionField.stringValue().trim().replace("\n\n\n\n", "\n\n");
-			}
-			
-			IndexableField[] cqFields = hit.getFields("cqs");
-			odpCqs = new String[cqFields.length];
-			for (int i=0; i<cqFields.length; i++) {
-				odpCqs[i] = cqFields[i].stringValue();
-			}
+			odpName = nameField.stringValue();
 			
 			IndexableField imageField = hit.getField("image");
 			if (imageField != null) {
 				odpImage = imageField.stringValue();
 			}
-			else {
-				odpImage = getOdpImageFromCsvLookup(odpIri);
+			
+			IndexableField intentField = hit.getField("intent");
+			if (intentField != null) {
+				odpIntent = intentField.stringValue();
+			}
+			
+			IndexableField descriptionField = hit.getField("description");
+			if (descriptionField != null) {
+				odpDescription = descriptionField.stringValue();
+			}
+			
+			IndexableField consequencesField = hit.getField("consequences");
+			if (consequencesField != null) {
+				odpConsequences = descriptionField.stringValue();
+			}
+			
+			IndexableField[] domainFields = hit.getFields("domain");
+			for (int i=0; i<domainFields.length; i++) {
+				String domain = domainFields[i].stringValue();
+				odpDomains.add(domain);
 			}
 			
 			IndexableField[] scenarioFields = hit.getFields("scenario");
-			odpScenarios = new String[scenarioFields.length];
 			for (int i=0; i<scenarioFields.length; i++) {
-				odpScenarios[i] = scenarioFields[i].stringValue();
+				String scenario = scenarioFields[i].stringValue();
+				odpScenarios.add(scenario);
 			}
 			
-			IndexableField[] classesFields = hit.getFields("classes");
-			odpClasses = new String[classesFields.length];
-			for (int i=0; i<classesFields.length; i++) {
-				odpClasses[i] = classesFields[i].stringValue();
+			IndexableField[] cqFields = hit.getFields("cq");
+			for (int i=0; i<cqFields.length; i++) {
+				String cq = cqFields[i].stringValue();
+				odpCqs.add(cq);
 			}
 			
-			IndexableField[] propertiesFields = hit.getFields("properties");
-			odpProperties = new String[propertiesFields.length];
-			for (int i=0; i<propertiesFields.length; i++) {
-				odpProperties[i] = propertiesFields[i].stringValue();
-			}
-			return new CodpDetails(odpIri,odpName, odpImage, odpDescription, odpDescription, odpDescription,
-					Arrays.asList(odpScenarios),Arrays.asList(odpScenarios), Arrays.asList(odpCqs)); 
-					
-				*/	
+			// Create and return new CodpDetails object
+			return new CodpDetails(odpIri,odpName, odpImage, odpIntent, odpDescription, odpConsequences,
+					odpDomains, odpScenarios, odpCqs); 
 		} 
 		catch (Exception e) {
 			log.error(String.format("Unable to enrich ODP %s: search failed with message: %s", odpIri, e.getMessage()));
@@ -187,24 +184,6 @@ public class MetadataFetcher {
 		}
 		
 	}
-	/*
-	private String getOdpImageFromCsvLookup(String odpIri) {
-		try {
-			final List<String> resourceLines = IOUtils.readLines(MetadataFetcher.class.getResourceAsStream("odpIllustrationMapping.csv"));
-			for (final String line : resourceLines) {
-				String[] lineComponents = line.split(";");
-				String lineIri = lineComponents[0];
-				String lineIllustrationIri = lineComponents[1];
-				if (lineIri.equalsIgnoreCase(odpIri)) {
-					return lineIllustrationIri;
-				}
-			}
-			return null;
-		}
-		catch (Exception ex) {
-			return null;
-		}
-	}*/
 	
 	/**
 	 * Returns a string array of all ODP categories (i.e., unique values for the string 

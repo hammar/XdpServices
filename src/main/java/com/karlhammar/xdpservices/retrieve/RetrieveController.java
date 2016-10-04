@@ -17,8 +17,8 @@ import com.karlhammar.xdpservices.data.CodpDetails;
 public class RetrieveController {
     
     @RequestMapping("/retrieve/odpMetadata")
-    public CodpDetails getOdpMetadata(@RequestParam(value="uri", required=true)String uri) {
-    	return MetadataFetcher.INSTANCE.getOdpDetails(uri);
+    public CodpDetails getOdpMetadata(@RequestParam(value="iri", required=true)String iri) {
+    	return MetadataFetcher.INSTANCE.getOdpDetails(iri);
     }
 	
     @RequestMapping("/retrieve/odpMetadataByCategory")
@@ -32,7 +32,7 @@ public class RetrieveController {
     }
     
 	@RequestMapping("/retrieve/odpBuildingBlockTurtle")
-	public String getOdpBuildingBlockTurtle(@RequestParam(value="uri", required=true)String odpIri) throws OWLOntologyCreationException, OWLOntologyStorageException, ParseException, IOException {
+	public String getOdpBuildingBlockTurtle(@RequestParam(value="iri", required=true)String odpIri) throws OWLOntologyCreationException, OWLOntologyStorageException, ParseException, IOException {
 		return OdpFetcher.getOdpBuildingBlockTurtle(odpIri);
 	}
 }
