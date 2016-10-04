@@ -38,7 +38,7 @@ import com.karlhammar.xdpservices.data.CodpDetails;
 import com.karlhammar.xdpservices.data.OdpSearchFilterConfiguration;
 import com.karlhammar.xdpservices.data.OdpSearchResult;
 import com.karlhammar.xdpservices.data.OdpSearchResultComparator;
-import com.karlhammar.xdpservices.deprecated.index.Indexer;
+import com.karlhammar.xdpservices.index.Indexer;
 
 import pitt.search.semanticvectors.FlagConfig;
 import pitt.search.semanticvectors.SearchResult;

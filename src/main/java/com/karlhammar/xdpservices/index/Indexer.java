@@ -581,7 +581,7 @@ public class Indexer {
 		return Optional.absent();
 	}
 	
-	private static List<String> getSynonyms(String inputWord) {
+	public static List<String> getSynonyms(String inputWord) {
 		List<String> synonyms = new ArrayList<String>();
 		IIndexWord idxWord = wordnetDictionary.getIndexWord(inputWord, POS.NOUN);
 		if (idxWord != null) {

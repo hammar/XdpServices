@@ -27,7 +27,7 @@ public class RetrieveController {
     }
     
     @RequestMapping("/retrieve/odpCategories")
-    public String[] odpCategories() {
+    public String[] odpCategories() throws IOException {
     	return MetadataFetcher.INSTANCE.getOdpCategories();
     }
     
