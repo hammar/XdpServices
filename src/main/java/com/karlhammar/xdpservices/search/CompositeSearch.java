@@ -1,21 +1,16 @@
 package com.karlhammar.xdpservices.search;
 
-import java.io.BufferedReader;
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
 import java.io.StringReader;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
-import java.util.Set;
-
 import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -37,7 +32,6 @@ import org.apache.lucene.store.FSDirectory;
 import com.karlhammar.xdpservices.data.CodpDetails;
 import com.karlhammar.xdpservices.data.OdpSearchFilterConfiguration;
 import com.karlhammar.xdpservices.data.OdpSearchResult;
-import com.karlhammar.xdpservices.data.OdpSearchResultComparator;
 import com.karlhammar.xdpservices.index.Indexer;
 
 import pitt.search.semanticvectors.FlagConfig;
@@ -48,7 +42,6 @@ public class CompositeSearch {
 	public final static CompositeSearch INSTANCE = new CompositeSearch();
 
 	private static Log log;
-	//private static Set<String> stopwords;
 	private static IndexReader luceneReader;
 	private static IndexSearcher luceneSearcher;
 	private static Boolean useLucene;
@@ -79,37 +72,7 @@ public class CompositeSearch {
 			log.error(String.format("Unable to load Lucene index reader. Lucene support disabled. Error message: %s", e.getMessage()));
 			useLucene = false;
 		}
-		//loadSearchProperties();
-		//stopwords = loadStopWords();
-		//loadLuceneReader();
-		
 	}
-	
-	/*private static void loadSearchProperties() {
-
-	}*/
-	
-	/*private static void loadLuceneReader() {
-		
-	}*/
-	
-	/*private static Set<String> loadStopWords() {
-		try {
-			InputStream is = CompositeSearch.class.getResourceAsStream("stopwords.txt");
-			BufferedReader stopbr = new BufferedReader(new InputStreamReader(is, "UTF-8"));
-			stopwords = new HashSet<String>();
-			String stopLine = null;
-			while ((stopLine = stopbr.readLine()) != null) {
-				stopwords.add(stopLine);
-			}
-			stopbr.close();
-			return stopwords;
-		}
-		catch (IOException e) {
-			log.error("Unable to load stop word set; using empty stop word set.");
-			return new HashSet<String>();
-		}
-	}*/
 	
 	/**
 	 * Execute Semantic Vectors Search (https://code.google.com/p/semanticvectors/).
@@ -185,15 +148,19 @@ public class CompositeSearch {
 		// URI field set in the process.
 		List<OdpSearchResult> mergedResultsList = new ArrayList<OdpSearchResult>();
 		for (Map.Entry<String, Double> entry : mergedResultsMap.entrySet()) {
-			// TODO: fix below, use of empty string in constructor is UGLY
-			CodpDetails odp = new CodpDetails(entry.getKey(),"");
+			CodpDetails odp = new CodpDetails(entry.getKey(), null);
 		    Double confidence = entry.getValue();
 		    OdpSearchResult newEntry = new OdpSearchResult(odp,confidence);
 		    mergedResultsList.add(newEntry);
 		}
 		
 		// Sort the merged list by scores, then reverse to get highest-scoring first
-		Collections.sort(mergedResultsList, new OdpSearchResultComparator());
+		mergedResultsList.sort(new Comparator<OdpSearchResult>() {
+			@Override
+			public int compare(OdpSearchResult osr1, OdpSearchResult osr2) {
+				return osr1.getConfidence().compareTo(osr2.getConfidence());
+			}
+		});
 		Collections.reverse(mergedResultsList);
 		
 		return mergedResultsList;
@@ -289,18 +256,6 @@ public class CompositeSearch {
 			}
 			return outputList;
 		}
-	}
-	
-	@SuppressWarnings("unused")
-	private static void debugPrint(String searchEngineName, List<OdpSearchResult> results) {
-		System.out.println("------------");
-		System.out.println(searchEngineName);
-		System.out.println("------------");
-		for (OdpSearchResult r: results) {
-			System.out.println(String.format("%s\t%s", r.getConfidence(), r.getOdp().getIri()));
-		}
-		System.out.println("------------");
-		
 	}
 	
 	/**
