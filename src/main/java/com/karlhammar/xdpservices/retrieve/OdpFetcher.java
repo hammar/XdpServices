@@ -1,4 +1,4 @@
-package com.karlhammar.xdpservices.deprecated.retrieve;
+package com.karlhammar.xdpservices.retrieve;
 
 import java.io.ByteArrayOutputStream;
 import java.io.File;

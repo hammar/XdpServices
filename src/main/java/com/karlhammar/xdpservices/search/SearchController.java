@@ -1,4 +1,4 @@
-package com.karlhammar.xdpservices.deprecated.search;
+package com.karlhammar.xdpservices.search;
 
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;

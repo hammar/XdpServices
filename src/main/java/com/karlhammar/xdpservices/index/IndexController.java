@@ -1,11 +1,14 @@
-package com.karlhammar.xdpservices.deprecated.index;
+package com.karlhammar.xdpservices.index;
+
+import java.io.IOException;
 
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+@RestController
 public class IndexController {
-
-    public String rebuildIndex() {
+    @RequestMapping("/index/rebuildIndex")
+    public String rebuildIndex() throws IOException {
     	return Indexer.INSTANCE.buildIndex();
     }
 }

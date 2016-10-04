@@ -47,6 +47,7 @@ public class CodpDetails implements Serializable {
 		this.cqs = cqs;
 	}
 
+	// Getters of mandatory fields
 	public String getIri() {
 		return iri;
 	}
@@ -55,6 +56,7 @@ public class CodpDetails implements Serializable {
 		return name;
 	}
 
+	// Getters of optional fields
 	public Optional<String> getImageIri() {
 		return Optional.fromNullable(imageIri);
 	}
@@ -71,6 +73,7 @@ public class CodpDetails implements Serializable {
 		return Optional.fromNullable(consequences);
 	}
 
+	// Getters of lists
 	public List<String> getDomains() {
 		return domains;
 	}
@@ -81,5 +84,22 @@ public class CodpDetails implements Serializable {
 
 	public List<String> getCqs() {
 		return cqs;
+	}
+
+	// Setters of optional fields
+	public void setImageIri(String imageIri) {
+		this.imageIri = imageIri;
+	}
+
+	public void setIntent(String intent) {
+		this.intent = intent;
+	}
+
+	public void setDescription(String description) {
+		this.description = description;
+	}
+
+	public void setConsequences(String consequences) {
+		this.consequences = consequences;
 	}
 }

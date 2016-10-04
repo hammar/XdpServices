@@ -1,4 +1,4 @@
-package com.karlhammar.xdpservices.deprecated.search;
+package com.karlhammar.xdpservices.search;
 
 import java.io.BufferedReader;
 import java.io.IOException;

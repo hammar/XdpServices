@@ -50,7 +50,7 @@ import pitt.search.semanticvectors.BuildIndex;
 
 import com.google.common.base.CaseFormat;
 import com.karlhammar.xdpservices.data.CodpDetails;
-import com.karlhammar.xdpservices.deprecated.search.CompositeSearch;
+import com.karlhammar.xdpservices.search.CompositeSearch;
 
 import edu.mit.jwi.Dictionary;
 import edu.mit.jwi.IDictionary;

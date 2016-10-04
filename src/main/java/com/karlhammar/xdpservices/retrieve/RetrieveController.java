@@ -1,4 +1,4 @@
-package com.karlhammar.xdpservices.deprecated.retrieve;
+package com.karlhammar.xdpservices.retrieve;
 
 import java.io.IOException;
 
@@ -13,21 +13,26 @@ import com.karlhammar.xdpservices.data.CodpDetails;
 
 //import edu.stanford.bmir.protege.web.shared.xd.OdpDetails;
 
+@RestController
 public class RetrieveController {
     
-    public CodpDetails getOdpMetadata(String uri) {
+    @RequestMapping("/retrieve/odpMetadata")
+    public CodpDetails getOdpMetadata(@RequestParam(value="uri", required=true)String uri) {
     	return MetadataFetcher.INSTANCE.getOdpDetails(uri);
     }
 	
-    public CodpDetails[] odpsByCategory(String category) {
+    @RequestMapping("/retrieve/odpMetadataByCategory")
+    public CodpDetails[] odpsByCategory(@RequestParam(value="category", required=true) String category) {
     	return MetadataFetcher.INSTANCE.getOdpsByCategory(category);
     }
     
+    @RequestMapping("/retrieve/odpCategories")
     public String[] odpCategories() {
     	return MetadataFetcher.INSTANCE.getOdpCategories();
     }
     
-	public String getOdpBuildingBlockTurtle(String odpIri) throws OWLOntologyCreationException, OWLOntologyStorageException, ParseException, IOException {
+	@RequestMapping("/retrieve/odpBuildingBlockTurtle")
+	public String getOdpBuildingBlockTurtle(@RequestParam(value="uri", required=true)String odpIri) throws OWLOntologyCreationException, OWLOntologyStorageException, ParseException, IOException {
 		return OdpFetcher.getOdpBuildingBlockTurtle(odpIri);
 	}
 }

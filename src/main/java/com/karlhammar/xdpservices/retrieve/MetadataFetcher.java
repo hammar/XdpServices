@@ -1,4 +1,4 @@
-package com.karlhammar.xdpservices.deprecated.retrieve;
+package com.karlhammar.xdpservices.retrieve;
 
 import java.io.IOException;
 import java.nio.file.Path;
