@@ -4,14 +4,13 @@ import java.io.IOException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Properties;
 import java.util.Set;
 
-import org.apache.commons.io.IOUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.lucene.analysis.Analyzer;
@@ -73,46 +72,37 @@ public class MetadataFetcher {
 	 * the "domain" string field in the Lucene index.
 	 * @param category ODP category to search for.
 	 * @return
+	 * @throws IOException 
 	 */
-	public CodpDetails[] getOdpsByCategory(String category) {
-		return null;
-		// TODO: Reimplement this with new Lucene index structure
-		/*try {
-
-			// Generate set of suitable ODP iris from category matching CSV file on disk
-			Set<String> matchingOdpIris = new HashSet<String>();
-			final List<String> resourceLines = IOUtils.readLines(MetadataFetcher.class.getResourceAsStream("odpCategoryMapping.csv"));
-			for (final String line : resourceLines) {
-				String[] lineComponents = line.split(";");
-				String lineCategory = lineComponents[0];
-				String lineOdpIri = lineComponents[1];
-				if (lineCategory.equalsIgnoreCase(category)) {
-					matchingOdpIris.add(lineOdpIri);
+	public CodpDetails[] getOdpsByCategory(String category) throws IOException {
+		List<CodpDetails> odps = new ArrayList<CodpDetails>();
+		// Iterate over all documents in index
+		for (int i=0; i<luceneReader.maxDoc(); i++) {
+			// Flag for whether this document is a hit or not
+			boolean odpMatchesCategory = false;
+			Document doc = luceneReader.document(i);
+			// Iterate over all instances of the "domain" field
+			IndexableField[] domainFields = doc.getFields("domain");
+			for (int ii=0; ii<domainFields.length; ii++) {
+				// If there is a match, set the flag
+				if (domainFields[ii].stringValue().trim().equalsIgnoreCase(category)) {
+					odpMatchesCategory = true;
 				}
 			}
-			
-			// 
-			
-			// Iterate over index and find documents with IRIs that are in the set of suitable ODPs
-			List<CodpDetails> odps = new ArrayList<CodpDetails>();
-			for (int i=0; i<luceneReader.maxDoc(); i++) {
-				Document doc = luceneReader.document(i);
-				String odpIri = doc.get("uri");
-				// If category is "Any", return all ODPs. 
-				// If not, only return if ODP IRI is in matching set of IRIs
-				if (category.equalsIgnoreCase("Any") || matchingOdpIris.contains(odpIri)) {
-					CodpDetails odp = new CodpDetails(doc.get("uri"),doc.get("name"));
-					odps.add(odp);
-				}
+			// If the document is flagged, create a CodpDetails object and add to return list 
+			if (odpMatchesCategory || category.equalsIgnoreCase("Any")) {
+				CodpDetails odp = new CodpDetails(doc.get("iri"), doc.get("name"));
+				odps.add(odp);
 			}
-			return odps.toArray(new CodpDetails[odps.size()]);
-			
 		}
-		catch (Exception e) {
-			log.error(String.format("Unable to retrieve ODP list for category %s: search failed with message: %s", category, e.getMessage()));
-			e.printStackTrace();
-			return null;
-		}*/
+		// Sort, transform into an array and return
+		odps.sort(new Comparator<CodpDetails>() {
+			@Override
+			public int compare(CodpDetails o1, CodpDetails o2) {
+				return o1.getName().compareTo(o2.getName());
+			}
+		});
+		return odps.toArray(new CodpDetails[odps.size()]);
 	}
 	
 	/**
@@ -218,7 +208,8 @@ public class MetadataFetcher {
 	
 	/**
 	 * Returns a string array of all ODP categories (i.e., unique values for the string 
-	 * field "domain") present in the Lucene index, sorted alphabetically.
+	 * field "domain") present in the Lucene index, sorted alphabetically, with the
+	 * additional value "Any" in first place.
 	 * @return
 	 * @throws IOException
 	 */
@@ -241,6 +232,7 @@ public class MetadataFetcher {
 		List<String> odpCategoriesAsList = new ArrayList<String>();
 		odpCategoriesAsList.addAll(odpCategories);
 		Collections.sort(odpCategoriesAsList);
+		odpCategoriesAsList.add(0, "Any");
 		// Transform into an array and return
 		return odpCategoriesAsList.toArray(new String[odpCategoriesAsList.size()]);
 	}

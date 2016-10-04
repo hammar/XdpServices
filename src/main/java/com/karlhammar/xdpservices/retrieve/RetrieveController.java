@@ -22,7 +22,7 @@ public class RetrieveController {
     }
 	
     @RequestMapping("/retrieve/odpMetadataByCategory")
-    public CodpDetails[] odpsByCategory(@RequestParam(value="category", required=true) String category) {
+    public CodpDetails[] odpsByCategory(@RequestParam(value="category", required=true) String category) throws IOException {
     	return MetadataFetcher.INSTANCE.getOdpsByCategory(category);
     }
     
