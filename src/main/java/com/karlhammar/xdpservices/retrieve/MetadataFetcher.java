@@ -153,7 +153,7 @@ public class MetadataFetcher {
 			
 			IndexableField consequencesField = hit.getField("consequences");
 			if (consequencesField != null) {
-				odpConsequences = descriptionField.stringValue();
+				odpConsequences = consequencesField.stringValue();
 			}
 			
 			IndexableField[] domainFields = hit.getFields("domain");
