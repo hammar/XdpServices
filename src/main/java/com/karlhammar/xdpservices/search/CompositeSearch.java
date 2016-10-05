@@ -1,21 +1,16 @@
 package com.karlhammar.xdpservices.search;
 
-import java.io.BufferedReader;
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
 import java.io.StringReader;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
-import java.util.Set;
-
 import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -34,22 +29,19 @@ import org.apache.lucene.search.Query;
 import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.store.FSDirectory;
-
+import com.karlhammar.xdpservices.data.CodpDetails;
+import com.karlhammar.xdpservices.data.OdpSearchFilterConfiguration;
+import com.karlhammar.xdpservices.data.OdpSearchResult;
 import com.karlhammar.xdpservices.index.Indexer;
 
 import pitt.search.semanticvectors.FlagConfig;
 import pitt.search.semanticvectors.SearchResult;
-import edu.stanford.bmir.protege.web.shared.xd.OdpDetails;
-import edu.stanford.bmir.protege.web.shared.xd.OdpSearchFilterConfiguration;
-import edu.stanford.bmir.protege.web.shared.xd.OdpSearchResult;
-import edu.stanford.bmir.protege.web.shared.xd.OdpSearchResultComparator;
 
 public class CompositeSearch {
 
 	public final static CompositeSearch INSTANCE = new CompositeSearch();
 
 	private static Log log;
-	private static Set<String> stopwords;
 	private static IndexReader luceneReader;
 	private static IndexSearcher luceneSearcher;
 	private static Boolean useLucene;
@@ -57,13 +49,10 @@ public class CompositeSearch {
 	
 	// Private constructor to defeat external instantiation (access via INSTANCE singleton)
 	private CompositeSearch() {
+		// Instantiate logging
 		log = LogFactory.getLog(CompositeSearch.class);
-		loadSearchProperties();
-		stopwords = loadStopWords();
-		loadLuceneReader();
-	}
-	
-	private static void loadSearchProperties() {
+		
+		// Load search properties
 		try {
 			searchProperties = new Properties();
 			searchProperties.load(CompositeSearch.class.getResourceAsStream("search.properties"));
@@ -71,9 +60,8 @@ public class CompositeSearch {
 		catch (IOException e) {
 			log.fatal(String.format("Unable to load search properties. Error message: %s", e.getMessage()));
 		}
-	}
-	
-	private static void loadLuceneReader() {
+		
+		// Load Lucene reader
 		try {
 			Path luceneIndexPath = Paths.get(searchProperties.getProperty("luceneIndexPath"));
 			luceneReader = DirectoryReader.open(FSDirectory.open(luceneIndexPath));
@@ -83,24 +71,6 @@ public class CompositeSearch {
 		catch (IOException e) {
 			log.error(String.format("Unable to load Lucene index reader. Lucene support disabled. Error message: %s", e.getMessage()));
 			useLucene = false;
-		}
-	}
-	
-	private static Set<String> loadStopWords() {
-		try {
-			InputStream is = CompositeSearch.class.getResourceAsStream("stopwords.txt");
-			BufferedReader stopbr = new BufferedReader(new InputStreamReader(is, "UTF-8"));
-			stopwords = new HashSet<String>();
-			String stopLine = null;
-			while ((stopLine = stopbr.readLine()) != null) {
-				stopwords.add(stopLine);
-			}
-			stopbr.close();
-			return stopwords;
-		}
-		catch (IOException e) {
-			log.error("Unable to load stop word set; using empty stop word set.");
-			return new HashSet<String>();
 		}
 	}
 	
@@ -119,7 +89,7 @@ public class CompositeSearch {
 			String queryVectorPath = String.format("%s/termvectors.bin", vectorBasePath);
 			String searchVectorPath = String.format("%s/docvectors.bin", vectorBasePath);
 			//
-			String[] configurationArray = {"-contentsfields","allterms","-docidfield", "uri","-queryvectorfile",queryVectorPath,"-searchvectorfile", searchVectorPath, "-searchtype", "SUM", "-numsearchresults", "25"};
+			String[] configurationArray = {"-contentsfields","allterms","-docidfield", "iri","-queryvectorfile",queryVectorPath,"-searchvectorfile", searchVectorPath, "-searchtype", "SUM", "-numsearchresults", "25"};
 			String[] queryTermsArray = queryTerms.toArray(new String[queryTerms.size()]);
 			String[] queryArray = ArrayUtils.addAll(configurationArray, queryTermsArray);
 			
@@ -130,7 +100,7 @@ public class CompositeSearch {
 			      for (SearchResult result: results) {
 			    	  String suggestedOdpPath = result.getObjectVector().getObject().toString();
 			    	  Double suggestedOdpScore = result.getScore();
-			    	  OdpSearchResult entry = new OdpSearchResult(new OdpDetails(suggestedOdpPath),suggestedOdpScore);
+			    	  OdpSearchResult entry = new OdpSearchResult(new CodpDetails(suggestedOdpPath,""),suggestedOdpScore);
 			    	  resultsList.add(entry);
 			      }
 			}
@@ -165,12 +135,12 @@ public class CompositeSearch {
 		// the many fields that this data type has.
 		Map<String,Double> mergedResultsMap = new HashMap<String,Double>();
 		for (OdpSearchResult entry: concatenatedResultsList) {
-			if (!mergedResultsMap.containsKey(entry.getOdp().getUri())) {
-				mergedResultsMap.put(entry.getOdp().getUri(), entry.getConfidence());
+			if (!mergedResultsMap.containsKey(entry.getOdp().getIri())) {
+				mergedResultsMap.put(entry.getOdp().getIri(), entry.getConfidence());
 			}
 			else {
-				Double updatedScore = mergedResultsMap.get(entry.getOdp().getUri()) + entry.getConfidence();
-				mergedResultsMap.put(entry.getOdp().getUri(), updatedScore);
+				Double updatedScore = mergedResultsMap.get(entry.getOdp().getIri()) + entry.getConfidence();
+				mergedResultsMap.put(entry.getOdp().getIri(), updatedScore);
 			}
 		}
 		
@@ -178,14 +148,19 @@ public class CompositeSearch {
 		// URI field set in the process.
 		List<OdpSearchResult> mergedResultsList = new ArrayList<OdpSearchResult>();
 		for (Map.Entry<String, Double> entry : mergedResultsMap.entrySet()) {
-			OdpDetails odp = new OdpDetails(entry.getKey());
+			CodpDetails odp = new CodpDetails(entry.getKey(), null);
 		    Double confidence = entry.getValue();
 		    OdpSearchResult newEntry = new OdpSearchResult(odp,confidence);
 		    mergedResultsList.add(newEntry);
 		}
 		
 		// Sort the merged list by scores, then reverse to get highest-scoring first
-		Collections.sort(mergedResultsList, new OdpSearchResultComparator());
+		mergedResultsList.sort(new Comparator<OdpSearchResult>() {
+			@Override
+			public int compare(OdpSearchResult osr1, OdpSearchResult osr2) {
+				return osr1.getConfidence().compareTo(osr2.getConfidence());
+			}
+		});
 		Collections.reverse(mergedResultsList);
 		
 		return mergedResultsList;
@@ -211,13 +186,13 @@ public class CompositeSearch {
 			// Set up stuff that will be needed
 			List<OdpSearchResult> outputList = new ArrayList<OdpSearchResult>();
 			Analyzer analyzer = new WhitespaceAnalyzer();
-			QueryParser queryParser = new QueryParser("uri", analyzer);
+			QueryParser queryParser = new QueryParser("iri", analyzer);
 
 			// Iterate over input list
 			for (OdpSearchResult result: inputList) {
 
 				// Get details for each result list entry
-				String odpUri = result.getOdp().getUri();
+				String odpUri = result.getOdp().getIri().toString();
 				Double confidence = result.getConfidence();
 
 				// Search Lucene index to find ODP document 
@@ -229,7 +204,7 @@ public class CompositeSearch {
 
 					IndexableField nameField = hit.getField("name");
 					String odpName = nameField.stringValue();
-					OdpSearchResult newResult = new OdpSearchResult(new OdpDetails(odpUri,odpName), confidence);
+					OdpSearchResult newResult = new OdpSearchResult(new CodpDetails(odpUri,odpName), confidence);
 					outputList.add(newResult);
 				} 
 				catch (Exception e) {
@@ -281,18 +256,6 @@ public class CompositeSearch {
 			}
 			return outputList;
 		}
-	}
-	
-	@SuppressWarnings("unused")
-	private static void debugPrint(String searchEngineName, List<OdpSearchResult> results) {
-		System.out.println("------------");
-		System.out.println(searchEngineName);
-		System.out.println("------------");
-		for (OdpSearchResult r: results) {
-			System.out.println(String.format("%s\t%s", r.getConfidence(), r.getOdp().getUri()));
-		}
-		System.out.println("------------");
-		
 	}
 	
 	/**
@@ -364,7 +327,7 @@ public class CompositeSearch {
 				    int docId = sdoc.doc;
 				    float score = sdoc.score;
 				    Document doc = luceneSearcher.doc(docId);
-				    OdpSearchResult entry = new OdpSearchResult(new OdpDetails(doc.getField("uri").stringValue()), new Double(score));
+				    OdpSearchResult entry = new OdpSearchResult(new CodpDetails(doc.getField("iri").stringValue(),doc.getField("name").toString()), new Double(score));
 					resultsList.add(entry);
 				}
 			} 
@@ -400,7 +363,7 @@ public class CompositeSearch {
 				    int docId = sdoc.doc;
 				    float score = sdoc.score;
 				    Document doc = luceneSearcher.doc(docId);
-				    OdpSearchResult entry = new OdpSearchResult(new OdpDetails(doc.getField("uri").stringValue()), new Double(score));
+				    OdpSearchResult entry = new OdpSearchResult(new CodpDetails(doc.getField("iri").stringValue(),doc.getField("name").stringValue()), new Double(score));
 					resultsList.add(entry);
 				}
 			} 

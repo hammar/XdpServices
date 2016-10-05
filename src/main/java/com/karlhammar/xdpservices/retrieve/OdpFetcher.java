@@ -37,77 +37,71 @@ import com.karlhammar.xdpservices.search.CompositeSearch;
 public class OdpFetcher {
 	
 	// Singleton instance.
-		public final static OdpFetcher INSTANCE = new OdpFetcher();
-		
-		private static Log log;
-		private static Properties searchProperties;
-		private static IndexReader luceneReader;
-		private static IndexSearcher luceneSearcher;
+	public final static OdpFetcher INSTANCE = new OdpFetcher();
 	
-		private OdpFetcher() {
-			log = LogFactory.getLog(MetadataFetcher.class);
-			loadSearchProperties();
-			loadLuceneReader();
+	private static Log log;
+	private static Properties searchProperties;
+	private static IndexReader luceneReader;
+	private static IndexSearcher luceneSearcher;
+
+	private OdpFetcher() {
+		// Instantiate logging
+		log = LogFactory.getLog(MetadataFetcher.class);
+		
+		// Load configuration properties
+		try {
+			searchProperties = new Properties();
+			searchProperties.load(CompositeSearch.class.getResourceAsStream("search.properties"));
+		} 
+		catch (IOException e) {
+			log.fatal(String.format("Unable to load search properties. Error message: %s", e.getMessage()));
 		}
 		
-		/**
-		 * Load search property file (should this functionality be in a utility class?)
-		 */
-		private static void loadSearchProperties() {
-			try {
-				searchProperties = new Properties();
-				searchProperties.load(CompositeSearch.class.getResourceAsStream("search.properties"));
-			} 
-			catch (IOException e) {
-				log.fatal(String.format("Unable to load search properties. Error message: %s", e.getMessage()));
-			}
+		// Load Lucene statics
+		try {
+			Path luceneIndexPath = Paths.get(searchProperties.getProperty("luceneIndexPath"));
+			luceneReader = DirectoryReader.open(FSDirectory.open(luceneIndexPath));
+			luceneSearcher = new IndexSearcher(luceneReader);
+		} 
+		catch (IOException e) {
+			log.fatal(String.format("Unable to load Lucene index reader. Error message: %s", e.getMessage()));
 		}
+	}
 	
-		private static void loadLuceneReader() {
-			try {
-				Path luceneIndexPath = Paths.get(searchProperties.getProperty("luceneIndexPath"));
-				luceneReader = DirectoryReader.open(FSDirectory.open(luceneIndexPath));
-				luceneSearcher = new IndexSearcher(luceneReader);
-			} 
-			catch (IOException e) {
-				log.fatal(String.format("Unable to load Lucene index reader. Error message: %s", e.getMessage()));
-			}
-		}
+	public static String getOdpBuildingBlockTurtle(String odpIri) throws OWLOntologyCreationException, OWLOntologyStorageException, ParseException, IOException {
+		log.info(String.format("%s body requested",odpIri));
+		// Configure search
+		Analyzer analyzer = new WhitespaceAnalyzer();
+		QueryParser queryParser = new QueryParser("iri", analyzer);
+		Query query = queryParser.parse(String.format("\"%s\"", odpIri));
 		
-		public static String getOdpBuildingBlockTurtle(String odpIri) throws OWLOntologyCreationException, OWLOntologyStorageException, ParseException, IOException {
-			log.info(String.format("%s body requested",odpIri));
-			// Configure search
-			Analyzer analyzer = new WhitespaceAnalyzer();
-			QueryParser queryParser = new QueryParser("uri", analyzer);
-			Query query = queryParser.parse(String.format("\"%s\"", odpIri));
-			
-			// Execute search
-			ScoreDoc[] hits = luceneSearcher.search(query, null, 1).scoreDocs;
-			Document hit = luceneSearcher.doc(hits[0].doc);
-			
-			// Return path on disk from search result
-			IndexableField nameField = hit.getField("path");
-			String odpPath = nameField.stringValue();
-			File odpFile = new File(odpPath);
-			
-			// Load ODP. Format is guessed automatically.
-			OWLOntologyManager manager = OWLManager.createOWLOntologyManager();
-	        OWLOntologyLoaderConfiguration config = new OWLOntologyLoaderConfiguration();
-	        FileDocumentSource fds = new FileDocumentSource(odpFile);
-	        config = config.setFollowRedirects(false);
-	        config = config.setMissingImportHandlingStrategy(MissingImportHandlingStrategy.SILENT);
-	        OWLOntology odp = manager.loadOntologyFromOntologyDocument(fds, config);
-	        
-	        // Set up output format. Copy prefixes from existing file if needed.
-	        OWLOntologyFormat format = manager.getOntologyFormat(odp);
-	        TurtleOntologyFormat turtleFormat = new TurtleOntologyFormat();
-	        if (format.isPrefixOWLOntologyFormat()) {
-	        	turtleFormat.copyPrefixesFrom(format.asPrefixOWLOntologyFormat());
-	        }
-	        
-	        // Save ontology into Turtle format into an output stream, send to client
-	        ByteArrayOutputStream baos = new ByteArrayOutputStream();
-	        manager.saveOntology(odp, turtleFormat, baos);
-	        return baos.toString();
-		}
+		// Execute search
+		ScoreDoc[] hits = luceneSearcher.search(query, null, 1).scoreDocs;
+		Document hit = luceneSearcher.doc(hits[0].doc);
+		
+		// Return path on disk from search result
+		IndexableField nameField = hit.getField("path");
+		String odpPath = nameField.stringValue();
+		File odpFile = new File(odpPath);
+		
+		// Load ODP. Format is guessed automatically.
+		OWLOntologyManager manager = OWLManager.createOWLOntologyManager();
+        OWLOntologyLoaderConfiguration config = new OWLOntologyLoaderConfiguration();
+        FileDocumentSource fds = new FileDocumentSource(odpFile);
+        config = config.setFollowRedirects(false);
+        config = config.setMissingImportHandlingStrategy(MissingImportHandlingStrategy.SILENT);
+        OWLOntology odp = manager.loadOntologyFromOntologyDocument(fds, config);
+        
+        // Set up output format. Copy prefixes from existing file if needed.
+        OWLOntologyFormat format = manager.getOntologyFormat(odp);
+        TurtleOntologyFormat turtleFormat = new TurtleOntologyFormat();
+        if (format.isPrefixOWLOntologyFormat()) {
+        	turtleFormat.copyPrefixesFrom(format.asPrefixOWLOntologyFormat());
+        }
+        
+        // Save ontology into Turtle format into an output stream, send to client
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        manager.saveOntology(odp, turtleFormat, baos);
+        return baos.toString();
+	}
 }

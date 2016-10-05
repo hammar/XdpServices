@@ -4,12 +4,13 @@ import java.io.IOException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Properties;
 import java.util.Set;
 
-import org.apache.commons.io.IOUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.lucene.analysis.Analyzer;
@@ -23,10 +24,10 @@ import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.store.FSDirectory;
-
+import com.karlhammar.xdpservices.data.CodpDetails;
 import com.karlhammar.xdpservices.search.CompositeSearch;
 
-import edu.stanford.bmir.protege.web.shared.xd.OdpDetails;
+//import edu.stanford.bmir.protege.web.shared.xd.OdpDetails;
 
 public class MetadataFetcher {
 
@@ -43,15 +44,10 @@ public class MetadataFetcher {
 	 * Private singleton constructor setting up all the statics that are needed. 
 	 */
 	private MetadataFetcher() {
+		// Instantiate logging
 		log = LogFactory.getLog(MetadataFetcher.class);
-		loadSearchProperties();
-		loadLuceneReader();
-	}
-	
-	/**
-	 * Load search property file (should this functionality be in a utility class?)
-	 */
-	private static void loadSearchProperties() {
+		
+		// Get search configuration
 		try {
 			searchProperties = new Properties();
 			searchProperties.load(CompositeSearch.class.getResourceAsStream("search.properties"));
@@ -59,9 +55,8 @@ public class MetadataFetcher {
 		catch (IOException e) {
 			log.fatal(String.format("Unable to load search properties. Error message: %s", e.getMessage()));
 		}
-	}
-	
-	private static void loadLuceneReader() {
+
+		// Load Lucene reader and searcher
 		try {
 			Path luceneIndexPath = Paths.get(searchProperties.getProperty("luceneIndexPath"));
 			luceneReader = DirectoryReader.open(FSDirectory.open(luceneIndexPath));
@@ -71,147 +66,153 @@ public class MetadataFetcher {
 			log.fatal(String.format("Unable to load Lucene index reader. Error message: %s", e.getMessage()));
 		}
 	}
-	
-	public OdpDetails[] getOdpsByCategory(String category) {
-		try {
-			
-			// Generate set of suitable ODP iris from category matching CSV file on disk
-			Set<String> matchingOdpIris = new HashSet<String>();
-			final List<String> resourceLines = IOUtils.readLines(MetadataFetcher.class.getResourceAsStream("odpCategoryMapping.csv"));
-			for (final String line : resourceLines) {
-				String[] lineComponents = line.split(";");
-				String lineCategory = lineComponents[0];
-				String lineOdpIri = lineComponents[1];
-				if (lineCategory.equalsIgnoreCase(category)) {
-					matchingOdpIris.add(lineOdpIri);
+
+	/**
+	 * Return an array of CodpDetails objects that have the input category set as value for
+	 * the "domain" string field in the Lucene index.
+	 * @param category ODP category to search for.
+	 * @return
+	 * @throws IOException 
+	 */
+	public CodpDetails[] getOdpsByCategory(String category) throws IOException {
+		List<CodpDetails> odps = new ArrayList<CodpDetails>();
+		// Iterate over all documents in index
+		for (int i=0; i<luceneReader.maxDoc(); i++) {
+			// Flag for whether this document is a hit or not
+			boolean odpMatchesCategory = false;
+			Document doc = luceneReader.document(i);
+			// Iterate over all instances of the "domain" field
+			IndexableField[] domainFields = doc.getFields("domain");
+			for (int ii=0; ii<domainFields.length; ii++) {
+				// If there is a match, set the flag
+				if (domainFields[ii].stringValue().trim().equalsIgnoreCase(category)) {
+					odpMatchesCategory = true;
 				}
 			}
-			
-			// 
-			
-			// Iterate over index and find documents with IRIs that are in the set of suitable ODPs
-			List<OdpDetails> odps = new ArrayList<OdpDetails>();
-			for (int i=0; i<luceneReader.maxDoc(); i++) {
-				Document doc = luceneReader.document(i);
-				String odpIri = doc.get("uri");
-				// If category is "Any", return all ODPs. 
-				// If not, only return if ODP IRI is in matching set of IRIs
-				if (category.equalsIgnoreCase("Any") || matchingOdpIris.contains(odpIri)) {
-					OdpDetails odp = new OdpDetails(doc.get("uri"),doc.get("name"));
-					odps.add(odp);
-				}
+			// If the document is flagged, create a CodpDetails object and add to return list 
+			if (odpMatchesCategory || category.equalsIgnoreCase("Any")) {
+				CodpDetails odp = new CodpDetails(doc.get("iri"), doc.get("name"));
+				odps.add(odp);
 			}
-			return odps.toArray(new OdpDetails[odps.size()]);
-			
 		}
-		catch (Exception e) {
-			log.error(String.format("Unable to retrieve ODP list for category %s: search failed with message: %s", category, e.getMessage()));
-			e.printStackTrace();
-			return null;
-		}
+		// Sort, transform into an array and return
+		odps.sort(new Comparator<CodpDetails>() {
+			@Override
+			public int compare(CodpDetails o1, CodpDetails o2) {
+				return o1.getName().compareTo(o2.getName());
+			}
+		});
+		return odps.toArray(new CodpDetails[odps.size()]);
 	}
 	
 	/**
-	 * Enriches an OdpDetails object by looking up all fields in the Lucene index.
-	 * @param odpUri URI of ODP to enrich.
-	 * @return An OdpDetails object with all the fields that are stored in the index set.
+	 * Retrieve a CodpDetails object by looking up all fields in the Lucene index, based on
+	 * an input IRI.
+	 * @param odpIri IRI of the ODP to fetch
+	 * @return A CodpDetails object with all the fields that are stored in the index set.
 	 */
-	public OdpDetails getOdpDetails(String odpUri) {
+	public CodpDetails getOdpDetails(String odpIri) {
 		Analyzer analyzer = new WhitespaceAnalyzer();
-		QueryParser queryParser = new QueryParser("uri", analyzer);
+		QueryParser queryParser = new QueryParser("iri", analyzer);
 
 		// Search Lucene index to find ODP document 
 		try {
 			// Add quotes to search string before parsing to search for exact match.
-			Query query = queryParser.parse(String.format("\"%s\"", odpUri));
+			Query query = queryParser.parse(String.format("\"%s\"", odpIri));
 			ScoreDoc[] hits = luceneSearcher.search(query, null, 1).scoreDocs;
 			Document hit = luceneSearcher.doc(hits[0].doc);
-
+			
 			// All initial fields
 			String odpName = null;
-			String odpDescription = null;
-			String[] odpDomains = null;
-			String[] odpCqs = null;
 			String odpImage = null;
-			String[] odpScenarios = null;
-			String[] odpClasses = null;
-			String[] odpProperties = null;
-			
+			String odpIntent = null;
+			String odpDescription = null;
+			String odpConsequences = null;
+			List<String> odpDomains = new ArrayList<String>();
+			List<String> odpScenarios = new ArrayList<String>();
+			List<String> odpCqs = new ArrayList<String>();
+
+			// Get each field from Lucene index
 			IndexableField nameField = hit.getField("name");
-			if (nameField != null) {
-				odpName = nameField.stringValue();
-			}
-			
-			IndexableField descriptionField = hit.getField("description");
-			if (descriptionField != null) {
-				odpDescription = descriptionField.stringValue().trim().replace("\n\n\n\n", "\n\n");
-			}
-			
-			IndexableField[] cqFields = hit.getFields("cqs");
-			odpCqs = new String[cqFields.length];
-			for (int i=0; i<cqFields.length; i++) {
-				odpCqs[i] = cqFields[i].stringValue();
-			}
+			odpName = nameField.stringValue();
 			
 			IndexableField imageField = hit.getField("image");
 			if (imageField != null) {
 				odpImage = imageField.stringValue();
 			}
-			else {
-				odpImage = getOdpImageFromCsvLookup(odpUri);
+			
+			IndexableField intentField = hit.getField("intent");
+			if (intentField != null) {
+				odpIntent = intentField.stringValue();
+			}
+			
+			IndexableField descriptionField = hit.getField("description");
+			if (descriptionField != null) {
+				odpDescription = descriptionField.stringValue();
+			}
+			
+			IndexableField consequencesField = hit.getField("consequences");
+			if (consequencesField != null) {
+				odpConsequences = consequencesField.stringValue();
+			}
+			
+			IndexableField[] domainFields = hit.getFields("domain");
+			for (int i=0; i<domainFields.length; i++) {
+				String domain = domainFields[i].stringValue();
+				odpDomains.add(domain);
 			}
 			
 			IndexableField[] scenarioFields = hit.getFields("scenario");
-			odpScenarios = new String[scenarioFields.length];
 			for (int i=0; i<scenarioFields.length; i++) {
-				odpScenarios[i] = scenarioFields[i].stringValue();
+				String scenario = scenarioFields[i].stringValue();
+				odpScenarios.add(scenario);
 			}
 			
-			IndexableField[] classesFields = hit.getFields("classes");
-			odpClasses = new String[classesFields.length];
-			for (int i=0; i<classesFields.length; i++) {
-				odpClasses[i] = classesFields[i].stringValue();
+			IndexableField[] cqFields = hit.getFields("cq");
+			for (int i=0; i<cqFields.length; i++) {
+				String cq = cqFields[i].stringValue();
+				odpCqs.add(cq);
 			}
 			
-			IndexableField[] propertiesFields = hit.getFields("properties");
-			odpProperties = new String[propertiesFields.length];
-			for (int i=0; i<propertiesFields.length; i++) {
-				odpProperties[i] = propertiesFields[i].stringValue();
-			}
-			
-			return new OdpDetails(odpUri,odpName, odpDescription, odpDomains, odpCqs, odpImage, odpScenarios, odpClasses, odpProperties);
+			// Create and return new CodpDetails object
+			return new CodpDetails(odpIri,odpName, odpImage, odpIntent, odpDescription, odpConsequences,
+					odpDomains, odpScenarios, odpCqs); 
 		} 
 		catch (Exception e) {
-			log.error(String.format("Unable to enrich ODP %s: search failed with message: %s", odpUri, e.getMessage()));
+			log.error(String.format("Unable to enrich ODP %s: search failed with message: %s", odpIri, e.getMessage()));
 			return null;
 		}
+		
 	}
 	
-	public String getOdpImageFromCsvLookup(String odpIri) {
-		try {
-			final List<String> resourceLines = IOUtils.readLines(MetadataFetcher.class.getResourceAsStream("odpIllustrationMapping.csv"));
-			for (final String line : resourceLines) {
-				String[] lineComponents = line.split(";");
-				String lineIri = lineComponents[0];
-				String lineIllustrationIri = lineComponents[1];
-				if (lineIri.equalsIgnoreCase(odpIri)) {
-					return lineIllustrationIri;
+	/**
+	 * Returns a string array of all ODP categories (i.e., unique values for the string 
+	 * field "domain") present in the Lucene index, sorted alphabetically, with the
+	 * additional value "Any" in first place.
+	 * @return
+	 * @throws IOException
+	 */
+	public String[] getOdpCategories() throws IOException {
+		Set<String> odpCategories = new HashSet<String>();
+		// Iterate over all documents in index
+		for (int i=0; i<luceneReader.maxDoc(); i++) {
+			Document doc = luceneReader.document(i);
+			// Iterate over all instances of the "domain" field
+			IndexableField[] domainFields = doc.getFields("domain");
+			for (int ii=0; ii<domainFields.length; ii++) {
+				String category = domainFields[ii].stringValue().trim();
+				// If field value is non-empty, add it
+				if (!category.equalsIgnoreCase("")) {
+					odpCategories.add(category);
 				}
 			}
-			return null;
 		}
-		catch (Exception ex) {
-			return null;
-		}
-	}
-	
-	public String[] getOdpCategories() {
-		try {
-			final List<String> resourceLines = IOUtils.readLines(MetadataFetcher.class.getResourceAsStream("odpCategories.txt"));
-			return resourceLines.toArray(new String[resourceLines.size()]);
-		}
-		catch (Exception e) {
-			return new String[]{String.format("Failed to get ODP categories. Exception thrown: ", e.toString())};
-		}
+		// Transform set into list and sort
+		List<String> odpCategoriesAsList = new ArrayList<String>();
+		odpCategoriesAsList.addAll(odpCategories);
+		Collections.sort(odpCategoriesAsList);
+		odpCategoriesAsList.add(0, "Any");
+		// Transform into an array and return
+		return odpCategoriesAsList.toArray(new String[odpCategoriesAsList.size()]);
 	}
 }
