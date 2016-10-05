@@ -125,7 +125,7 @@ public class Indexer {
 		long csvStartTime = System.nanoTime();
 		URL csvFileUrl = Indexer.class.getResource("ODPs.csv");
 		Reader csvFileReader = new FileReader(csvFileUrl.getPath());
-		Iterable<CSVRecord> records = CSVFormat.EXCEL.withDelimiter(';').withSkipHeaderRecord(true).withHeader("OWLBuildingBlock",
+		Iterable<CSVRecord> records = CSVFormat.EXCEL.withDelimiter(';').withSkipHeaderRecord(true).withNullString("").withHeader("OWLBuildingBlock",
 				"Name",
 				"GraphicallyRepresentedBy",
 				"HasIntent",
@@ -142,33 +142,33 @@ public class Indexer {
 		    CodpDetails odpDetails = new CodpDetails(iri,name);
 		    
 		    // Add optional fields
-		    if (record.isSet("GraphicallyRepresentedBy")) {
+		    if (record.get("GraphicallyRepresentedBy") != null) {
 		    	odpDetails.setImageIri(record.get("GraphicallyRepresentedBy"));
 		    }
-		    if (record.isSet("HasIntent")) {
+		    if (record.get("HasIntent") != null) {
 		    	odpDetails.setIntent(record.get("HasIntent"));
 		    }
-		    if (record.isSet("ContentODPDescription")) {
+		    if (record.get("ContentODPDescription") != null) {
 		    	odpDetails.setDescription(record.get("ContentODPDescription"));
 		    }
-		    if (record.isSet("HasConsequence")) {
+		    if (record.get("HasConsequence") != null) {
 		    	odpDetails.setConsequences(record.get("HasConsequence"));
 		    }
 		    	
 		    // Add list fields (if they exist), splitting as needed
-		    if (record.isSet("PatternDomain")) {
+		    if (record.get("PatternDomain") != null) {
 		    	String[] domains = record.get("PatternDomain").split("[\n\r]");
 		    	for (String domain: domains) {
 		    		odpDetails.getDomains().add(domain);
 		    	}
 		    }
-		    if (record.isSet("CoversRequirement")) {
+		    if (record.get("CoversRequirement") != null) {
 		    	String[] cqs = record.get("CoversRequirement").split("[\n\r]");
 		    	for (String cq: cqs) {
 		    		odpDetails.getCqs().add(cq);
 		    	}
 		    }
-		    if (record.isSet("Scenario")) {
+		    if (record.get("Scenario") != null) {
 		    	String[] scenarios = record.get("Scenario").split("[\n\r]");
 		    	for (String scenario: scenarios) {
 		    		odpDetails.getScenarios().add(scenario);
@@ -312,7 +312,7 @@ public class Indexer {
 		            	String odpIntent = odpDetails.getIntent().get();
 		            	Field intentField = new StringField("intent", odpIntent, Field.Store.YES);
 		            	doc.add(intentField);
-		            	allTerms.add(odpName);
+		            	allTerms.add(odpIntent);
 		            }
 		            
 		            // Add description
@@ -558,12 +558,24 @@ public class Indexer {
         	odpName = "Unknown";
         }
         
-        // Merge multivalued fields
-        String odpIntent = StringUtils.collectionToDelimitedString(odpIntents, "\n\n");
-        String odpDescription = StringUtils.collectionToDelimitedString(odpDescriptions, "\n\n");
-        String odpConsequence = StringUtils.collectionToDelimitedString(odpConsequences, "\n\n");
+        // Merge possibly multiple occurences of intent/description/consequences annotations        
+        String odpIntent = mergeStrings(odpIntents);
+        String odpDescription = mergeStrings(odpDescriptions);
+        String odpConsequence = mergeStrings(odpConsequences);
         
 		return new CodpDetails(odpIri,odpName,odpImage,odpIntent,odpDescription,odpConsequence,odpDomains,odpScenarios,odpCqs);
+	}
+	
+	private static String mergeStrings(List<String> inputList) {
+		if (inputList.size() == 1) {
+			return inputList.get(0);
+		}
+		else if (inputList.size() > 1) {
+			return StringUtils.collectionToDelimitedString(inputList, "\n");
+		}
+		else {
+			return null;
+		}
 	}
 
 
