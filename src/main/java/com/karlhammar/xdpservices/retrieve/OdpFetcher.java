@@ -76,7 +76,7 @@ public class OdpFetcher {
 		Query query = queryParser.parse(String.format("\"%s\"", odpIri));
 		
 		// Execute search
-		ScoreDoc[] hits = luceneSearcher.search(query, null, 1).scoreDocs;
+		ScoreDoc[] hits = luceneSearcher.search(query, 1).scoreDocs;
 		Document hit = luceneSearcher.doc(hits[0].doc);
 		
 		// Return path on disk from search result

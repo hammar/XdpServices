@@ -119,7 +119,7 @@ public class MetadataFetcher {
 		try {
 			// Add quotes to search string before parsing to search for exact match.
 			Query query = queryParser.parse(String.format("\"%s\"", odpIri));
-			ScoreDoc[] hits = luceneSearcher.search(query, null, 1).scoreDocs;
+			ScoreDoc[] hits = luceneSearcher.search(query, 1).scoreDocs;
 			Document hit = luceneSearcher.doc(hits[0].doc);
 			
 			// All initial fields
